@@ -28,7 +28,7 @@ def make_maps(a3darraymap): # a function that makes maps from gamma 1 and gamma 
         lfacskappa[np.isinf(lfacskappa)]=0
         lfacskappa[np.isnan(lfacskappa)]=0
 
-        alphafacs=2/np.sqrt((lmode+2)*(lmode-1)) #ell mode coefficients to go from E_alm to alpha, bend angle
+        alphafacs=-2./np.sqrt((lmode+2)*(lmode-1)) #ell mode coefficients to go from E_alm to alpha, bend angle
         alms=hp.sphtfunc.map2alm(a3darraymap, lmax=LMAX, pol=True)
         Ealm=alms[1]
         Kalm=lfacskappa*Ealm
@@ -51,7 +51,7 @@ Npix=Nside**2*12
 kappa=np.zeros(Npix)
 theta,phi=hp.pix2ang(Nside,np.arange(Npix))
 phi[phi>np.pi]-=2*np.pi
-kappa=SphericalMap(np.exp(-(phi**2+(theta-np.pi/2)**2)/(2*0.1**2)))
+kappa=SphericalMap(np.exp(-((phi-np.pi)**2+(theta-1.1)**2)/(2*0.1**2)))
 
 NSIDE=256 #defines pixel scale, can use hp.nside2resol to get a pixel scale
 LMAX=2*NSIDE-1 #defines the biggest l mode used in some spherical approaches (used in some functions)
