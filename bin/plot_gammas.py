@@ -110,15 +110,15 @@ def plot_gamma(ga1, ga2, k_g1, k_g2):
 
 def plot_kappa(ga1, ga2, ke):
 
-    # make a 3D array using the shear components
+    # Make a 3D array using the shear components
     a3darraymap = np.array([ga1*0.0, ga1, ga2]) 
 
-    # find nside of map from just input map
+    # Find nside from input map
     nside = hp.npix2nside(len(a3darraymap[1])) 
     lmax=3*nside-1
     nell = hp.sphtfunc.Alm.getsize(lmax=lmax)
     
-    # put ell modes in an array
+    # Put ell modes in an array
     lmode = hp.sphtfunc.Alm.getlm(lmax=lmax, i=np.arange(nell))[0] 
 
     # ell mode coefficients to go from E_alm to kappa
@@ -126,19 +126,19 @@ def plot_kappa(ga1, ga2, ke):
     #lfactor_kappa = lmode*(lmode+1)/(lmode+2)/np.sqrt(lmode-1) 
     lfactor_kappa[lmode<2]=0
 
-    # get alm from input map
+    # Get E-mode alms from input map
     alms = hp.sphtfunc.map2alm(a3darraymap, lmax=lmax, pol=True)
 
-    # Get C_ells auto- for kappa estimated from gammas
+    # Compute kappa alms
     Kalm = lfactor_kappa*alms[1]
 
-    # Get kappa map from Cls
+    # Get kappa map from kappa alms
     kg = hp.sphtfunc.alm2map(Kalm, nside=nside, lmax=lmax)
 
-    # Get the C_ells auto- for kappa estimated directly
+    # Get the C_ells auto- for kappa-estimated-from-gammas
     Cls1=hp.sphtfunc.anafast(kg, lmax=3*NSIDE-1)
 
-    # Get the C_ells auto- for kappa estimated directly
+    # Get the C_ells auto- for kappa-estimated-directly
     Cls2=hp.sphtfunc.anafast(ke, lmax=3*NSIDE-1)
 
     # Get the theoretical values for ells and C_ells
@@ -147,7 +147,7 @@ def plot_kappa(ga1, ga2, ke):
 
     # kappa plot
     P.figure(figsize=(10,8))
-    # The factor of 4 accounts for eBOSS footprint ~ 1/4 full sky
+    # The factor of 4 below accounts for eBOSS footprint ~ 1/4 full sky
     P.plot(ell, cell/4, label='Theory')
     # The factor of 4 below is a fudge to make the data fit
     P.plot(Cls1 * 4, label='$\kappa_{\gamma_{1}\gamma_{2}} $')
@@ -193,7 +193,8 @@ kappa_alm = hp.map2alm(ktrue, lmax=3*NSIDE-1)
 LMAX=3*NSIDE-1
 lmode , em =hp.sphtfunc.Alm.getlm(lmax=LMAX)
 
-#inverse of coefficients that relate the kappa field and the "E mode type" measurement from lensing shear.
+# Inverse of coefficients that relate the kappa field and the "E mode type"
+# measurement from lensing shear.
 LFACSEB=(lmode*(lmode+1)/((lmode+2)*(lmode-1)))**(-0.5)  
 
 LFACSEB[np.isinf(LFACSEB)]=0
