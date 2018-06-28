@@ -125,7 +125,8 @@ def plot_kappa(ga1, ga2, ke):
     alms = hp.sphtfunc.map2alm(a3darraymap, lmax=lmax, pol=True)
 
     # ell mode coefficients to go from E_alm to kappa
-    lfactor_kappa = lmode*(lmode+1)/(lmode+2)/np.sqrt(lmode-1) 
+    lfactor_kappa = np.sqrt((lmode*(lmode+1)) / ((lmode+2)*(lmode-1)))
+    #lfactor_kappa = lmode*(lmode+1)/(lmode+2)/np.sqrt(lmode-1) 
     lfactor_kappa[lmode<2]=0
 
     # Get C_ells auto- for kappa estimated from gammas
