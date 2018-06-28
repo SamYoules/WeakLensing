@@ -115,22 +115,28 @@ def plot_kappa(ga1, ga2, ke):
 
     # find nside of map from just input map
     nside = hp.npix2nside(len(a3darraymap[1])) 
-    lmax=2*nside-1
+    lmax=3*nside-1
     nell = hp.sphtfunc.Alm.getsize(lmax=lmax)
     
     # put ell modes in an array
     lmode = hp.sphtfunc.Alm.getlm(lmax=lmax, i=np.arange(nell))[0] 
-
-    # get alm from input map
-    alms = hp.sphtfunc.map2alm(a3darraymap, lmax=lmax, pol=True)
 
     # ell mode coefficients to go from E_alm to kappa
     lfactor_kappa = np.sqrt((lmode*(lmode+1)) / ((lmode+2)*(lmode-1)))
     #lfactor_kappa = lmode*(lmode+1)/(lmode+2)/np.sqrt(lmode-1) 
     lfactor_kappa[lmode<2]=0
 
+    # get alm from input map
+    alms = hp.sphtfunc.map2alm(a3darraymap, lmax=lmax, pol=True)
+
     # Get C_ells auto- for kappa estimated from gammas
-    Cls1 = lfactor_kappa*alms[1]
+    Kalm = lfactor_kappa*alms[1]
+
+    # Get kappa map from Cls
+    kg = hp.sphtfunc.alm2map(Kalm, nside=nside, lmax=lmax)
+
+    # Get the C_ells auto- for kappa estimated directly
+    Cls1=hp.sphtfunc.anafast(kg, lmax=3*NSIDE-1)
 
     # Get the C_ells auto- for kappa estimated directly
     Cls2=hp.sphtfunc.anafast(ke, lmax=3*NSIDE-1)
@@ -141,10 +147,13 @@ def plot_kappa(ga1, ga2, ke):
 
     # kappa plot
     P.figure(figsize=(10,8))
+    # The factor of 4 accounts for eBOSS footprint ~ 1/4 full sky
     P.plot(ell, cell/4, label='Theory')
-    P.plot(Cls1, label='$\kappa_{\gamma_{1}\gamma_{2}} $')
+    # The factor of 4 below is a fudge to make the data fit
+    P.plot(Cls1 * 4, label='$\kappa_{\gamma_{1}\gamma_{2}} $')
     P.plot(Cls2, label='$\kappa_{est} $')
     P.xlim(10,200)
+    P.ylim(0,2.1e-8)
     P.ylabel('$C_l$', fontsize=18)
     P.xlabel('$l$', fontsize=18)
     P.legend()
