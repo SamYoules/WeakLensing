@@ -230,8 +230,8 @@ class kappa:
        
         ska = sp.sum( (d12 - xi_model)/R*w12 )
         wka = sp.sum( w12/R**2 ) 
-        gam1 = 2*sp.cos(2*gamma_ang) * sp.sum( (d12 - xi_model)/R*w12 ) # SY
-        gam2 = -2*sp.sin(2*gamma_ang) * sp.sum( (d12 - xi_model)/R*w12 ) # SY
+        gam1 = -2*sp.cos(2*gamma_ang) * sp.sum( (d12 - xi_model)/R*w12 ) # SY
+        gam2 = 2*sp.sin(2*gamma_ang) * sp.sum( (d12 - xi_model)/R*w12 ) # SY
 
         return ska, wka, gam1, gam2 # SY
 
@@ -269,9 +269,8 @@ class kappa:
         #wka = xi_lens.size
         ska = sp.sum( (xi_lens - xi_model)/R )
         wka = sp.sum( 1/R**2  )
-        gam1 = 2*sp.cos(2*gamma_ang) * sp.sum( (xi_lens - xi_model)/R )  # SY
-        # SY added minus sign below, as g2 is imaginary part of complex shear
-        gam2 = -2*sp.sin(2*gamma_ang) * sp.sum( (xi_lens - xi_model)/R ) # SY
+        gam1 = -2*sp.cos(2*gamma_ang) * sp.sum( (xi_lens - xi_model)/R )  # SY
+        gam2 = 2*sp.sin(2*gamma_ang) * sp.sum( (xi_lens - xi_model)/R ) # SY
 
         return ska, wka, gam1, gam2 # SY
 
