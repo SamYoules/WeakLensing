@@ -7,28 +7,27 @@ import pylab as P
 import kappa_lya
 from kappa_lya import *
 import sys
+import configargparse
 
 
 def open_gaussian():
 
     g1 = fits.open('gamma-gaussian-true-v3.fits.gz')[1].data.gamma1
     g2 = fits.open('gamma-gaussian-true-v3.fits.gz')[1].data.gamma2
-    wgam = fits.open('gamma-gaussian-true-v3.fits.gz')[1].data.wgamma
     kap = fits.open('kappa-gaussian-true-v3.fits.gz')[1].data.kappa
     wkap = fits.open('kappa-gaussian-true-v3.fits.gz')[1].data.wkappa
     ktrue = fits.open('kappa_input.fits')[1].data.I
-    return g1, g2, wgam, kap, wkap, ktrue
+    return g1, g2, kap, wkap, ktrue
 
 
 def open_blob():
 
     g1 = fits.open('gamma-blob.fits.gz')[1].data.gamma1
     g2 = fits.open('gamma-blob.fits.gz')[1].data.gamma2
-    wgam = fits.open('gamma-blob.fits.gz')[1].data.wgamma
     kap = fits.open('kappa-blob.fits.gz')[1].data.kappa
     wkap = fits.open('kappa-blob.fits.gz')[1].data.wkappa
     ktrue = fits.open('kappa_blob_input.fits')[1].data.I
-    return g1, g2, wgam, kap, wkap, ktrue
+    return g1, g2, kap, wkap, ktrue
 
 
 def plot_mollviews(ga1, ga2, k_g1, k_g2, kt, kg):
@@ -85,7 +84,6 @@ def plot_gamma(ga1, ga2, k_g1, k_g2):
     P.plot(Cls1, label='$\gamma_{1 est}$')
     P.plot(Cls3, label='$\gamma_{1 true}$')
     P.plot(Cls13, label='$\gamma_{1 est}\gamma_{1 true}$')
-    P.plot(Cls12, label='$\gamma_{1 est}\gamma_{2 est}$')
     P.xlim(10,200)
     P.ylabel('$C_l$', fontsize=18)
     P.xlabel('$l$', fontsize=18)
@@ -108,7 +106,9 @@ def plot_gamma(ga1, ga2, k_g1, k_g2):
     P.close()
 
 
-def plot_kappa(ga1, ga2, ke):
+def plot_kappa(ga1, ga2, k_k, k_t):
+    '''Derive kappa_g from the estimated gamma1 and gamma2, and then plot
+       auto- and cross-correlations'''
 
     # Make a 3D array using the shear components
     a3darraymap = np.array([ga1*0.0, ga1, ga2]) 
@@ -123,7 +123,6 @@ def plot_kappa(ga1, ga2, ke):
 
     # ell mode coefficients to go from E_alm to kappa
     lfactor_kappa = np.sqrt((lmode*(lmode+1)) / ((lmode+2)*(lmode-1)))
-    #lfactor_kappa = lmode*(lmode+1)/(lmode+2)/np.sqrt(lmode-1) 
     lfactor_kappa[lmode<2]=0
 
     # Get E-mode alms from input map
@@ -132,34 +131,51 @@ def plot_kappa(ga1, ga2, ke):
     # Compute kappa alms
     Kalm = lfactor_kappa*alms[1]
 
-    # Get kappa map from kappa alms
-    kg = hp.sphtfunc.alm2map(Kalm, nside=nside, lmax=lmax)
+    # Get kappa_g map from kappa alms
+    k_g = hp.sphtfunc.alm2map(Kalm, nside=nside, lmax=lmax)
+    # Fix amplitude problem coming from the gammas
+    k_g=k_g*2
 
-    # Get the C_ells auto- for kappa-estimated-from-gammas
-    Cls1=hp.sphtfunc.anafast(kg, lmax=3*NSIDE-1)
-
-    # Get the C_ells auto- for kappa-estimated-directly
-    Cls2=hp.sphtfunc.anafast(ke, lmax=3*NSIDE-1)
+    # Get the C_ells for auto- and cross-correlations
+    Cls1=hp.sphtfunc.anafast(k_g, lmax=3*NSIDE-1)
+    Cls2=hp.sphtfunc.anafast(k_k, lmax=3*NSIDE-1)
+    Cls3=hp.sphtfunc.anafast(k_t, lmax=3*NSIDE-1)
+    Cls12=hp.sphtfunc.anafast(k_g, k_k, lmax=3*NSIDE-1)
+    Cls13=hp.sphtfunc.anafast(k_g, k_t, lmax=3*NSIDE-1)
+    Cls23=hp.sphtfunc.anafast(k_k, k_t, lmax=3*NSIDE-1)
 
     # Get the theoretical values for ells and C_ells
     th = kappa_lya.Theory()
     ell, cell = th.get_cl_kappa(2.1)
 
-    # kappa plot
+    # kappa plots
     P.figure(figsize=(10,8))
     # The factor of 4 below accounts for eBOSS footprint ~ 1/4 full sky
-    P.plot(ell, cell/4, label='Theory')
-    # The factor of 4 below is a fudge to make the data fit
-    P.plot(Cls1 * 4, label='$\kappa_{\gamma_{1}\gamma_{2}} $')
-    P.plot(Cls2, label='$\kappa_{est} $')
+    #P.plot(ell, cell/4, label='Theory')
+
+    #P.plot(Cls1, label='$\kappa_{\gamma \gamma} $')
+    #P.plot(Cls2, label='$\kappa_{\kappa \kappa} $')
+    #P.plot(Cls3, label='$\kappa_{tt} $')
+
+    #P.plot(Cls12, label='$\kappa_{\kappa \gamma} $')
+    #P.plot(Cls13, label='$\kappa_{\gamma t} $')
+    #P.plot(Cls23, label='$\kappa_{\kappa t} $')
+
+    #P.plot(Cls23/Cls3, label='$\kappa_{\kappa t} / \kappa_{tt} $')
+    #P.plot(Cls13/Cls3, label='$\kappa_{\gamma t} / \kappa_{tt} $')
+
+    P.plot(Cls2 - Cls3, label='$\kappa_{\kappa \kappa} - \kappa_{tt} $')
+    P.plot(Cls1 - Cls3, label='$\kappa_{\gamma \gamma} - \kappa_{tt} $')
+    P.plot(Cls12 - Cls3, label='$\kappa_{\kappa \gamma} - \kappa_{tt} $')
+
     P.xlim(10,200)
-    P.ylim(0,2.1e-8)
+    #P.ylim(-0.5e-8,2.1e-8)
     P.ylabel('$C_l$', fontsize=18)
     P.xlabel('$l$', fontsize=18)
-    P.legend()
+    P.legend(fontsize=22)
     P.title(r'$\kappa {\rm \ Correlations}$')
-    P.savefig('plots/kappa_corr.png')
-    P.close()
+    #P.savefig('plots/kappa_corr_b.png')
+    #P.close()
 
 
 
@@ -170,9 +186,11 @@ outtype = sys.argv[2]
 
 # Open files
 if (filetype == 'b'):
-    g1, g2, wgam, kap, wkap, ktrue = open_blob()
+    g1, g2, kap, wkap, ktrue = open_blob()
 else:
-    g1, g2, wgam, kap, wkap, ktrue = open_gaussian()
+    g1, g2, kap, wkap, ktrue = open_gaussian()
+    #g1 = g1*2
+    #g2 = g2*2
 
 # Reset nside of input kappa file to match lower resolution maps
 NSIDE=int(hp.npix2nside(kap.size))
@@ -204,21 +222,20 @@ LFACSEB[np.isnan(LFACSEB)]=0
 Etruealm=LFACSEB*kappa_alm 
 
 # Get gamma1 and gamma2 from E modes
-[kk, kapg1, kapg2] = hp.alm2map([Etruealm*0.0, Etruealm, Etruealm*0.0], \
+[kdummy, g1t, g2t] = hp.alm2map([Etruealm*0.0, Etruealm, Etruealm*0.0], \
                        nside=NSIDE, pol=True)
 
 # Mask off areas outside eBOSS footprint
-kapg1[w] = hp.UNSEEN
-kapg2[w] = hp.UNSEEN
+g1t[w] = hp.UNSEEN
+g2t[w] = hp.UNSEEN
 
 # Make plots
 if (outtype == 'g'):
-    plot_gamma(g1, g2, kapg1, kapg2)
+    plot_gamma(g1, g2, g1t, g2t)
 elif (outtype == 'k'):
-    #plot_kappa(kapg1, kapg2, kap)
-    plot_kappa(g1, g2, kap)
+    plot_kappa(g1, g2, kap, ktrue)
 else:
-    plot_mollviews(g1, g2, kapg1, kapg2, ktrue, kap)
+    plot_mollviews(g1, g2, g1t, g2t, ktrue, kap)
 
 
 

@@ -36,10 +36,12 @@ def rebin_cl(Cls):
 # input map names 
 map_1 = 'kappa-gaussian-true-v3.fits.gz'
 map_2 = 'kappa_input.fits'
+map_3 = 'kappa-gaussian-v3.fits.gz'
 
 map1 = fits.open(map_1)[1].data.kappa
 wmap1 = fits.open(map_1)[1].data.wkappa
 map2 = fits.open(map_2)[1].data.I
+map3 = fits.open(map_3)[1].data.kappa
 
 # degrade kappa_true map to match number of pixels of other
 NSIDE=int(hp.npix2nside(map1.size))
@@ -50,6 +52,7 @@ map2 = hp.sphtfunc.alm2map(alm, nside=NSIDE)
 w = (wmap1 == 0)
 map1[w] = hp.UNSEEN
 map2[w] = hp.UNSEEN
+map3[w] = hp.UNSEEN
 
 
 ## Get Cls from maps for auto and cross correlations
@@ -66,25 +69,30 @@ l2, Cl2 = rebin_cl(Cls2)
 Cls12 = hp.sphtfunc.anafast(map1, map2, lmax=3*NSIDE-1)
 l12, Cl12 = rebin_cl(Cls12)
 
+# true/noisy cross-correlation
+Cls23 = hp.sphtfunc.anafast(map2, map3, lmax=3*NSIDE-1)
+l23, Cl23 = rebin_cl(Cls23)
+
 # Get the theoretical values for ells and C_ells
 th = kappa_lya.Theory()
 ell, cell = th.get_cl_kappa(2.1)
 
 # signal as a function of scale
 rho = Cl12/np.sqrt(Cl1*Cl2)
-
-P.figure()
+P.ion()
+#P.figure()
 P.plot(ell, cell/4, label='Theory')
 P.plot(l1, Cl1, label='$\kappa\kappa$')
-P.plot(l2, Cl2, label='$\kappa_{true}\kappa_{true}$')
-P.plot(l12, Cl12, label='$\kappa\kappa_{true}$')
-P.plot(l1, Cl1-Cl2, label='$\kappa\kappa - \kappa_{true}\kappa_{true}$')
+#P.plot(l2, Cl2, label='$\kappa_{true}\kappa_{true}$')
+P.plot(l12, -Cl12, label='$\kappa\kappa_{true}$')
+P.plot(l23, -Cl23, label='$\kappa_{true}\kappa_{noisy}$')
+#P.plot(l1, Cl1-Cl2, label='$\kappa\kappa - \kappa_{true}\kappa_{true}$')
 #P.plot(l1, rho, label='$\\rho$')
 P.xlim(10,200)
 P.ylabel('$C_l$', fontsize=18)
 P.xlabel('$l$', fontsize=18)
 P.legend()
 P.title(r'${\rm Cross \ Correlations \ of \ C}_{l}s \rm \ Power \ Spectrum$')
-P.savefig('plots/X-corrs.png')
-P.close()
+#P.savefig('plots/X-corrs-noisy.png')
+#P.close()
 
