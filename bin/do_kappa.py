@@ -226,7 +226,7 @@ class kappa:
         #-- getting model and first derivative
         xi_model = kappa.xi2d(rt, rp, grid=False)
         xip_model = kappa.xi2d(rt, rp, dx=1, grid=False)
-        R = -1/(xip_model*rt)
+        R = 1/(xip_model*rt) # SY
        
         ska = sp.sum( (d12 - xi_model)/R*w12 )
         wka = sp.sum( w12/R**2 ) 
@@ -263,7 +263,8 @@ class kappa:
         xi_model  = kappa.xi2d(rt,      rp,       grid=False)
         xi_lens   = kappa.xi2d(rt_lens, rp_lens,  grid=False)
         xip_model = kappa.xi2d(rt,      rp, dx=1, grid=False)
-        R = -1/(xip_model*rt)
+        #R = -1/(xip_model*rt) # SY
+        R = 1/(xip_model*rt) # SY
 
         #ska = sp.sum( (xi_lens - xi_model)*R )
         #wka = xi_lens.size
