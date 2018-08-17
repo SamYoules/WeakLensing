@@ -23,8 +23,10 @@ import configargparse
 
 class kappa:
 
-    nside = 64
-    nside_data = 32
+    #nside = 64      # SY
+    #nside_data = 32 # SY
+    nside = 256      # SY
+    nside_data = 256 # SY
     rot = healpy.Rotator(coord=['C', 'G'])
     lambda_abs = 1215.67
 
@@ -231,7 +233,7 @@ class kappa:
         ska = sp.sum( (d12 - xi_model)/R*w12 )
         wka = sp.sum( w12/R**2 ) 
         gam1 = -2*sp.cos(2*gamma_ang) * sp.sum( (d12 - xi_model)/R*w12 ) # SY
-        gam2 = 2*sp.sin(2*gamma_ang) * sp.sum( (d12 - xi_model)/R*w12 ) # SY
+        gam2 = 4*sp.sin(2*gamma_ang) * sp.sum( (d12 - xi_model)/R*w12 ) # SY
 
         return ska, wka, gam1, gam2 # SY
 
@@ -271,7 +273,7 @@ class kappa:
         ska = sp.sum( (xi_lens - xi_model)/R )
         wka = sp.sum( 1/R**2  )
         gam1 = -2*sp.cos(2*gamma_ang) * sp.sum( (xi_lens - xi_model)/R )  # SY
-        gam2 = 2*sp.sin(2*gamma_ang) * sp.sum( (xi_lens - xi_model)/R ) # SY
+        gam2 = 4*sp.sin(2*gamma_ang) * sp.sum( (xi_lens - xi_model)/R ) # SY
 
         return ska, wka, gam1, gam2 # SY
 
