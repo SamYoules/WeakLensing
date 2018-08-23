@@ -24,9 +24,8 @@ import configargparse
 class kappa:
 
     #nside = 64      # SY
-    #nside_data = 32 # SY
     nside = 256      # SY
-    nside_data = 256 # SY
+    nside_data = 32
     rot = healpy.Rotator(coord=['C', 'G'])
     lambda_abs = 1215.67
 
@@ -221,9 +220,9 @@ class kappa:
         w12 = w12[w]
         d12 = d12[w]
 
-        x = (phi2 - phi1)/sp.sin(th1) # SY
-        y = th2 - th1                 # SY
-        gamma_ang = sp.arctan2(y,x)   # SY
+        x = (phi2 - phi1) * sp.sin(th1) # SY 22/8/18
+        y = th2 - th1                   # SY
+        gamma_ang = sp.arctan2(y,x)     # SY
 
         #-- getting model and first derivative
         xi_model = kappa.xi2d(rt, rp, grid=False)
@@ -232,7 +231,7 @@ class kappa:
        
         ska = sp.sum( (d12 - xi_model)/R*w12 )
         wka = sp.sum( w12/R**2 ) 
-        gam1 = -2*sp.cos(2*gamma_ang) * sp.sum( (d12 - xi_model)/R*w12 ) # SY
+        gam1 = 4*sp.cos(2*gamma_ang) * sp.sum( (d12 - xi_model)/R*w12 ) # SY
         gam2 = 4*sp.sin(2*gamma_ang) * sp.sum( (d12 - xi_model)/R*w12 ) # SY
 
         return ska, wka, gam1, gam2 # SY
@@ -257,22 +256,19 @@ class kappa:
         rt_lens = rt_lens[w]
         #z  = z[w]
 
-        x = (phi2 - phi1)/sp.sin(th1) # SY
-        y = th2 - th1                 # SY
-        gamma_ang = sp.arctan2(y,x)   # SY
+        x = (phi2 - phi1) * sp.sin(th1) # SY 22/8/18
+        y = th2 - th1                   # SY
+        gamma_ang = sp.arctan2(y,x)     # SY
 
         #-- getting model and first derivative
         xi_model  = kappa.xi2d(rt,      rp,       grid=False)
         xi_lens   = kappa.xi2d(rt_lens, rp_lens,  grid=False)
         xip_model = kappa.xi2d(rt,      rp, dx=1, grid=False)
-        #R = -1/(xip_model*rt) # SY
         R = 1/(xip_model*rt) # SY
 
-        #ska = sp.sum( (xi_lens - xi_model)*R )
-        #wka = xi_lens.size
         ska = sp.sum( (xi_lens - xi_model)/R )
         wka = sp.sum( 1/R**2  )
-        gam1 = -2*sp.cos(2*gamma_ang) * sp.sum( (xi_lens - xi_model)/R )  # SY
+        gam1 = 4*sp.cos(2*gamma_ang) * sp.sum( (xi_lens - xi_model)/R ) # SY
         gam2 = 4*sp.sin(2*gamma_ang) * sp.sum( (xi_lens - xi_model)/R ) # SY
 
         return ska, wka, gam1, gam2 # SY
@@ -341,8 +337,8 @@ if __name__=='__main__':
     #-- compiling results from pool
     kap = sp.zeros(12*kappa.nside**2)
     wkap = sp.zeros(12*kappa.nside**2)
-    ga1 = sp.zeros(12*kappa.nside**2) # SY
-    ga2 = sp.zeros(12*kappa.nside**2) # SY
+    ga1 = sp.zeros(12*kappa.nside**2)  # SY
+    ga2 = sp.zeros(12*kappa.nside**2)  # SY
     wgam = sp.zeros(12*kappa.nside**2) # SY
     for i, r in enumerate(results):
         print(i, len(results))
@@ -352,7 +348,8 @@ if __name__=='__main__':
             wkap[j] += r[2][j]
             ga1[j]  += r[3][j]    # SY
             ga2[j]  += r[4][j]    # SY
-            wgam[j] += r[2][j] *2 # SY
+            wgam[j] += r[2][j]*2. # SY: factor of 2 comes from squaring the
+			          #  prefactors of r in the gamma estimator
     
     w = wkap>0
     kap[w]/= wkap[w]
@@ -371,7 +368,7 @@ if __name__=='__main__':
     out.write([kap, wkap], names=['kappa', 'wkappa'], header=head)
     out.close()
 
-    # SY
+    # SY: Write gamma estimator fits file
     out = fitsio.FITS(args.gout, 'rw', clobber=True)
     head = {}
     head['RPMIN']=kappa.rp_min
@@ -383,6 +380,4 @@ if __name__=='__main__':
     head['NSIDE']=kappa.nside
     out.write([ga1, ga2, wgam], names=['gamma1', 'gamma2', 'wgamma'], header=head)
     out.close()
-
-
 
