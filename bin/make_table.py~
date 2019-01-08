@@ -12,7 +12,7 @@ dir = sys.argv[1]
 # output file name
 fout = open(sys.argv[2], 'w')
 
-print('RA, DEC, RA_LENS, DEC_LENS, Z, PLATE, MJD, FIBERID, THINGID', file = fout)
+print('RA, DEC, Z, PLATE, MJD, FIBERID, THINGID, RA_LENS, DEC_LENS', file = fout)
 
 alldeltas =  glob.glob(dir+'/*.fits.gz')
 ndel = len(alldeltas)

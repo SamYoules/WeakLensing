@@ -71,7 +71,7 @@ plt.rcParams.update({'font.size':24})
 plt.loglog(ls, cl_kappa, lw='4')
 plt.ylabel('$[l(l+1)]^2C_l^{\phi}/2\pi$')
 plt.xlabel('$l$')
-#plt.title(r'$C{_l}s \ for \ making \ lensing \ maps$')
+plt.title(r'$C{_l}s \ for \ making \ lensing \ maps$')
 #plt.savefig('c_ells.png')
 #plt.close()
 

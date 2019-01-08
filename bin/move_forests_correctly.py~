@@ -1,0 +1,104 @@
+# Authors: Sam Youles, Julian Bautista
+
+# 14/8/18 Creates a Gaussian kappa map to lens forests with. Reads delta files and rewrites 'lensed' version in another directory. RA and Dec are calculated for each pixel in the forest, as the forest is no longer in the line of sight of the quasar once lensing is taken into account. New arrays for RA and Dec are added to the delta files. Note that the original position is actually the lensed one, and the new deltas represent the 'true' position of the forests.
+
+import camb
+import camb.model
+import numpy as np
+import healpy as hp
+import sys
+import glob
+import os
+import fitsio
+from kappa_lya import *
+
+def get_forest_radec(theta0, phi0, theta_true, phi_true, z, ll, gamma, delta):
+    '''Calculate true ra and dec for each pixel in the forest'''
+    ra_forest = []
+    dec_forest = []
+
+    #-- Get comoving distances and angles
+    D_qso = cosmo.r_comoving(z)
+    for l in ll:
+        z_lya = 10**l/1216-1.
+        D_lya = cosmo.r_comoving(z_lya)
+        epsilon = np.arcsin(D_qso * np.sin(delta)/D_lya)
+        beta = epsilon - gamma
+
+        #-- decompose beta into phi & theta and add to (subtract from) ra & dec
+        ####### edge effects?
+        if theta_true > theta0:
+            theta = theta0 + np.sin(beta)
+        else:
+            theta = theta0 - np.sin(beta)
+        if phi_true > phi0:
+            phi = phi0 + np.cos(beta)
+        else:
+            phi = phi0 - np.cos(beta)
+        ra_forest.append(phi)
+        dec_forest.append(np.pi/2-theta)
+    return(ra_forest, dec_forest)
+
+#-- Directory names and input-kappa file name
+indir = sys.argv[1]
+outdir = sys.argv[2]
+truekappa = sys.argv[3]
+
+#-- Create angular power spectrum of kappa
+theory = Theory()
+ell, cell = theory.get_cl_kappa(2.1, kmax=100., nz=100, lmax=10000)
+
+nside=1024
+npix=nside**2*12
+seed=1
+np.random.seed(seed)
+kappa = create_gaussian_kappa(ell, cell, nside=nside, seed=seed)
+hp.fitsfunc.write_map(truekappa, kappa.A, fits_IDL=False)
+
+#-- Amend DEC and RA in each of the delta files by the bend angle from alpha map
+alldeltas = glob.glob(indir+'/*.fits.gz')
+ndel = len(alldeltas)
+i=0
+for filename in alldeltas:
+    #hdus = fits.open(filename)
+    hdus = fitsio.FITS(filename)
+    print(i, ndel)
+    i+=1
+
+    out = fitsio.FITS(outdir+"/"+os.path.basename(filename),'rw',clobber=True)
+
+    for hdu in hdus[1:]:
+        header = hdu.read_header()
+        ra = header['RA']
+        dec = header['DEC']
+
+        #-- Add reduced deflection angles to ra and dec of quasar
+        #-- Note: changed kappa_lya.py to used reduced angle, line 158, 164
+        theta_lens, phi_lens, alpha = kappa.displace_objects(np.pi/2-dec, ra) 
+
+        #-- Calculate deflection angle for each pixel of the forest
+        #-- The greek-letter variables are all angles - see diagram
+        gamma = np.pi - 2.*alpha
+        delta = np.pi - gamma - alpha
+        ll = hdu['LOGLAM'][:]
+        z = header['Z']
+        ra_forest, dec_forest = get_forest_radec(np.pi/2-dec, ra, theta_lens, \
+                                                 phi_lens, z, ll, gamma, delta)
+        
+        #-- Rewrite new delta file with new values
+        header['RA'] = phi_lens
+        header['DEC'] = np.pi/2-theta_lens
+        header['RA0'] = ra
+        header['DEC0'] = dec
+      
+        #-- Re-create columns, plus 2 new ones for ra & dec
+        de = hdu['DELTA'][:]
+        we = hdu['WEIGHT'][:]
+        co = hdu['CONT'][:] 
+        cols=[ll, de, we, co, ra_forest, dec_forest]
+        names=['LOGLAM','DELTA','WEIGHT','CONT','RA_FOREST','DEC_FOREST']
+        out.write(cols, names=names, header=header, \
+                  extname=str(header['THING_ID']))
+
+    out.close()
+

@@ -12,24 +12,11 @@ import sys
 
 def open_gaussian():
 
-    #g1 = fits.open('gamma-gaussian-true-v3.fits.gz')[1].data.gamma1
-    #g2 = fits.open('gamma-gaussian-true-v3.fits.gz')[1].data.gamma2
-    #kap = fits.open('kappa-gaussian-true-v3.fits.gz')[1].data.kappa
-    #wkap = fits.open('kappa-gaussian-true-v3.fits.gz')[1].data.wkappa
-    #ktrue = fits.open('kappa_input_gaussian.fits')[1].data.I
-
-    #g1 = fits.open('gamma-noiseless.fits.gz')[1].data.gamma1
-    #g2 = fits.open('gamma-noiseless.fits.gz')[1].data.gamma2
-    #kap = fits.open('kappa-noiseless.fits.gz')[1].data.kappa
-    #wkap = fits.open('kappa-noiseless.fits.gz')[1].data.wkappa
-    #ktrue = fits.open('kappa_input.fits')[1].data.I
-
-    g1 = fits.open('gamma-wsky-true4.fits.gz')[1].data.gamma1
-    g2 = fits.open('gamma-wsky-true4.fits.gz')[1].data.gamma2
-    kap = fits.open('kappa-wsky-true4.fits.gz')[1].data.kappa
-    wkap = fits.open('kappa-wsky-true4.fits.gz')[1].data.wkappa
-    ktrue = fits.open('kappa_input_wsky.fits')[1].data.I
-    #return g1, g2, kap, wkap, ktrue      # SY 22/8/18
+    g1 = fits.open(gfile)[1].data.gamma1
+    g2 = fits.open(gfile)[1].data.gamma2
+    kap = fits.open(kfile)[1].data.kappa
+    wkap = fits.open(kfile)[1].data.wkappa
+    ktrue = fits.open(infile)[1].data.I
     return g1*(-1), g2, kap, wkap, ktrue  # SY 22/8/18
 
 
@@ -89,7 +76,14 @@ def plot_gamma(ga1, ga2, ktrue, ell, cell, NSIDE):
     P.ylabel('$C_l^{\gamma \gamma}$', fontsize=18)
     P.xlabel('$l$', fontsize=18)
     P.legend()
-    P.title(r'$\gamma {\rm \ 1 \ Whole \ Sky, \ Double \ Density}$')
+    P.title(r'$\gamma {\rm \ 1 \ DESI \ Double \ Density}$')
+    #P.title(r'$\gamma {\rm \ 1 \ DESI \ Half \ Density}$')
+    #P.title(r'$\gamma {\rm \ 1 \ DESI}$')
+    #P.title(r'$\gamma {\rm \ 1 \ Whole \ Sky, \ Double \ Density}$')
+    #P.title(r'$\gamma {\rm \ 1 \ Whole \ Sky, \ eBOSS \ Density}$')
+    #P.title(r'$\gamma {\rm \ 1 \ eBOSS \ Footprint}$')
+    #P.title(r'$\gamma {\rm \ 1 \ Whole \ Sky, \ 1.5 Density}$')
+    #P.title(r'$\gamma {\rm \ 1 \ eBOSS \ Footprint \ Half \ Density}$')
     #P.savefig('plots/gamma1_corr_ws.png')
     #P.close()
 
@@ -103,7 +97,14 @@ def plot_gamma(ga1, ga2, ktrue, ell, cell, NSIDE):
     P.ylabel('$C_l^{\gamma \gamma}$', fontsize=18)
     P.xlabel('$l$', fontsize=18)
     P.legend()
-    P.title(r'$\gamma {\rm \ 2 \ Whole \ Sky, \ Double \ Density}$')
+    P.title(r'$\gamma {\rm \ 2 \ DESI \ Double \ Density}$')
+    #P.title(r'$\gamma {\rm \ 2 \ DESI \ Half \ Density}$')
+    #P.title(r'$\gamma {\rm \ 2 \ DESI}$')
+    #P.title(r'$\gamma {\rm \ 2 \ Whole \ Sky, \ Double \ Density}$')
+    #P.title(r'$\gamma {\rm \ 2 \ Whole \ Sky, \ eBOSS \ Density}$')
+    #P.title(r'$\gamma {\rm \ 2 \ Whole \ Sky, \ 1.5 Density}$')
+    #P.title(r'$\gamma {\rm \ 2 \ eBOSS \ Footprint}$')
+    #P.title(r'$\gamma {\rm \ 2 \ eBOSS \ Footprint \ Half \ Density}$')
     #P.savefig('plots/gamma2_corr_ws.png')
     #P.close()
 
@@ -155,7 +156,14 @@ def plot_kappa(ga1, ga2, k_k, k_t, ell, cell):
     P.xlim(1,200)
     P.xlabel('$l$', fontsize=18)
     P.legend(fontsize=22, loc = 'upper right')
-    P.title(r'$\kappa {\rm \ Whole \ Sky, \ Double \ Density, \ Auto-Correlations}$')
+    #P.title(r'$\kappa {\rm DESI \ Quarter \ Density \ Auto-Correlations}$')
+    P.title(r'$\kappa {\rm DESI \ Double \ Density \ Auto-Correlations}$')
+    #P.title(r'$\kappa {\rm DESI \ Auto-Correlations}$')
+    #P.title(r'$\kappa {\rm \ Whole \ Sky, \ Double \ Density, \ Auto-Correlations}$')
+    #P.title(r'$\kappa {\rm \ Whole \ Sky, \ eBOSS \ Density, \ Auto-Correlations}$')
+    #P.title(r'$\kappa {\rm \ Whole \ Sky, \ 1.5 Density, \ Auto-Correlations}$')
+    #P.title(r'$\kappa {\rm \ eBOSS \ Footprint, \ Half \ Density \ Auto-Correlations}$')
+    #P.title(r'$\kappa {\rm \ eBOSS \ Footprint, \ Auto-Correlations}$')
 
     P.figure(figsize=(10,8))
     P.plot(ell, cell, label='Theory')
@@ -166,7 +174,14 @@ def plot_kappa(ga1, ga2, k_k, k_t, ell, cell):
     P.xlim(1,200)
     P.xlabel('$l$', fontsize=18)
     P.legend(fontsize=22, loc = 'upper right')
-    P.title(r'$\kappa {\rm \ Whole \ Sky, \ Double \ Density, \ Cross-Correlations}$')
+    P.title(r'$\kappa {\rm DESI \ Double \ Density \ Cross-Correlations}$')
+    #P.title(r'$\kappa {\rm DESI \ Half \ Density \ Cross-Correlations}$')
+    #P.title(r'$\kappa {\rm \ DESI \ Cross-Correlations}$')
+    #P.title(r'$\kappa {\rm \ Whole \ Sky, \ Double \ Density, \ Cross-Correlations}$')
+    #P.title(r'$\kappa {\rm \ Whole \ Sky, \ eBOSS \ Density, \ Cross-Correlations}$')
+    #P.title(r'$\kappa {\rm \ Whole \ Sky, \ 1.5 Density, \ Cross-Correlations}$')
+    #P.title(r'$\kappa {\rm \ eBOSS \ Footprint, \ Half \ Density \ Cross-Correlations}$')
+    #P.title(r'$\kappa {\rm \ eBOSS \ Footprint, \ Cross-Correlations}$')
 
     P.figure(figsize=(10,8))
     P.plot(Cls23/Cls3, label='$\kappa_{\kappa t} / \kappa_{tt} $')
@@ -176,7 +191,14 @@ def plot_kappa(ga1, ga2, k_k, k_t, ell, cell):
     P.xlim(1,200)
     P.xlabel('$l$', fontsize=18)
     P.legend(fontsize=22, loc = 'upper right')
-    P.title(r'$\kappa {\rm \ Whole \ Sky, \ Double \ Density, \ Ratio \ of \ C_l^{\kappa \kappa}}$')
+    P.title(r'$\kappa {\rm \ DESI, \ Double \ Density \ Ratio \ of \ C_l^{\kappa \kappa}}$')
+    #P.title(r'$\kappa {\rm \ DESI, \ Half \ Density \ Ratio \ of \ C_l^{\kappa \kappa}}$')
+    #P.title(r'$\kappa {\rm \ DESI, \ Ratio \ of \ C_l^{\kappa \kappa}}$')
+    #P.title(r'$\kappa {\rm \ Whole \ Sky, \ Double \ Density, \ Ratio \ of \ C_l^{\kappa \kappa}}$')
+    #P.title(r'$\kappa {\rm \ Whole \ Sky, \ eBOSS \ Density, \ Ratio \ of \ C_l^{\kappa \kappa}}$')
+    #P.title(r'$\kappa {\rm \ Whole \ Sky, \ 1.5 Density, \ Ratio \ of \ C_l^{\kappa \kappa}}$')
+    #P.title(r'$\kappa {\rm \ eBOSS \ Footprint, \ Ratio \ of \ C_l^{\kappa \kappa}}$')
+    #P.title(r'$\kappa {\rm \ eBOSS \ Footprint, \ Half \ Density, \ Ratio \ of \ C_l^{\kappa \kappa}}$')
 
     P.figure(figsize=(10,8))
     P.plot(Cls2 - Cls3, label='$\kappa_{\kappa \kappa} - \kappa_{tt} $')
@@ -186,7 +208,14 @@ def plot_kappa(ga1, ga2, k_k, k_t, ell, cell):
     P.xlim(1,200)
     P.xlabel('$l$', fontsize=18)
     P.legend(fontsize=22, loc = 'upper right')
-    P.title(r'$\kappa {\rm \ Whole \ Sky, \ Double \ Density, \ C_l^{\kappa \kappa} \ Estimator \ - \ True}$')
+    P.title(r'$\kappa {\rm \ DESI, \ Double \ Density \ C_l^{\kappa \kappa} \ Estimator \ - \ True}$')
+    #P.title(r'$\kappa {\rm \ DESI, \ Half \ Density \ C_l^{\kappa \kappa} \ Estimator \ - \ True}$')
+    #P.title(r'$\kappa {\rm \ DESI, \ C_l^{\kappa \kappa} \ Estimator \ - \ True}$')
+    #P.title(r'$\kappa {\rm \ Whole \ Sky, \ Double \ Density, \ C_l^{\kappa \kappa} \ Estimator \ - \ True}$')
+    #P.title(r'$\kappa {\rm \ Whole \ Sky, \ eBOSS \ Density, \ C_l^{\kappa \kappa} \ Estimator \ - \ True}$')
+    #P.title(r'$\kappa {\rm \ Whole \ Sky, \ 1.5 Density, \ C_l^{\kappa \kappa} \ Estimator \ - \ True}$')
+    #P.title(r'$\kappa {\rm \ eBOSS \ Footprint, \ C_l^{\kappa \kappa} \ Estimator \ - \ True}$')
+    #P.title(r'$\kappa {\rm \ eBOSS \ Footprint, \ Half \ Density, \ C_l^{\kappa \kappa} \ Estimator \ - \ True}$')
 
     ###win = hp.pixwin(nside=256, pol = False)
     ###for i,j in enumerate(Cls23):
@@ -206,6 +235,9 @@ def plot_kappa(ga1, ga2, k_k, k_t, ell, cell):
 
 #-- input: enter 'g' or 'k' for gamma / kappa or 'n' for none
 outtype = sys.argv[1]
+infile = sys.argv[2]
+kfile = sys.argv[3]
+gfile = sys.argv[4]
 
 #-- open kappa & gamma fits files
 g1, g2, kap, wkap, ktrue = open_gaussian()
