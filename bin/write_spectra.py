@@ -24,8 +24,8 @@ def get_correlations(filenumber, maptype, NSIDE):
                                                    (maptype, filenumber))[1].data.I
     kest *= (-1)
     ##- Reset resolution of input maps to match estimated maps
-    #alm = hp.sphtfunc.map2alm(kinput, lmax=3*NSIDE-1)
-    #kinput = hp.sphtfunc.alm2map(alm, nside=NSIDE)
+    alm = hp.sphtfunc.map2alm(kinput, lmax=3*NSIDE-1)
+    kinput = hp.sphtfunc.alm2map(alm, nside=NSIDE)
 
     ##- Mask area outside footprint
     mask = wkest!=0
