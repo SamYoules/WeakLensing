@@ -96,7 +96,7 @@ if __name__=='__main__':
 
     #-- read QSO catalog with THING_ID, RA and DEC information 
     drq = Table.read(zcat)
-    drq.remove_columns(['Z', 'PLATE', 'MJD', 'FIBERID','RA0','DEC0'])
+    drq.remove_columns(['Z', 'PLATE', 'MJD', 'FIBERID'])
 
     ra1, dec1 = get_radec(drq['THING_ID'].data, drq['RA'].data, drq['DEC'].data,
                       kap['THID1'].data)

@@ -13,7 +13,7 @@ from scipy import random
 import copy
 
 from picca import constants
-from picca.data_lens import delta
+from picca.data import delta
 
 from multiprocessing import Pool,Process,Lock,Manager,cpu_count,Value
 
@@ -136,6 +136,8 @@ class kappa:
         ikappa = []
         skappa = {} 
         wkappa = {}
+        gamma1 = {} # SY
+        gamma2 = {} # SY
 
         for ipix in pixels:
             for i,d1 in enumerate(kappa.data[ipix]):
@@ -156,6 +158,8 @@ class kappa:
                     #th, phi = kappa.rot(sp.pi/2-mid_dec, mid_ra)
                     #-- keeping without rotation
                     th, phi = sp.pi/2-mid_dec, mid_ra
+                    th1, phi1 = sp.pi/2-d1.dec, d1.ra # SY
+                    th2, phi2 = sp.pi/2-d2.dec, d2.ra # SY
 
                     #-- check if pair of skewers belong to same spectro
                     same_half_plate = (d1.plate == d2.plate) and\
@@ -172,30 +176,37 @@ class kappa:
                                   th, phi) 
 
                     if kappa.true_corr:
-                        sk, wk = kappa.fast_kappa_true(\
+                        sk, wk, g1, g2 = kappa.fast_kappa_true(\
                                 d1.z, d1.r_comov, \
                                 d2.z, d2.r_comov, \
-                                ang_delensed, ang)
+                                ang_delensed, ang, \
+                                th1, phi1, th2, phi2) # SY
                     else:
-                        sk, wk = kappa.fast_kappa(\
+                        sk, wk, g1, g2 = kappa.fast_kappa(\
                                 d1.z, d1.r_comov, d1.we, d1.de, \
                                 d2.z, d2.r_comov, d2.we, d2.de, \
-                                ang, same_half_plate)
+                                ang, same_half_plate, \
+                                th1, phi1, th2, phi2) # SY
 
                     if mid_pix in ikappa:
                         skappa[mid_pix]+=sk
                         wkappa[mid_pix]+=wk
+                        gamma1[mid_pix]+=g1 # SY
+                        gamma2[mid_pix]+=g2 # SY
                     else:
                         ikappa.append(mid_pix)
                         skappa[mid_pix]=sk
                         wkappa[mid_pix]=wk
+                        gamma1[mid_pix]=g1 # SY
+                        gamma2[mid_pix]=g2 # SY
 
                 setattr(d1, "neighs", None)
                 
-        return ikappa, skappa, wkappa
+        return ikappa, skappa, wkappa, gamma1, gamma2 # SY
 
     @staticmethod
-    def fast_kappa(z1,r1,w1,d1,z2,r2,w2,d2,ang,same_half_plate):
+    def fast_kappa(z1,r1,w1,d1,z2,r2,w2,d2,ang,same_half_plate, \
+                   th1, phi1, th2, phi2): # SY
         rp = abs(r1-r2[:,None])*sp.cos(ang/2)
         rt = (r1+r2[:,None])*sp.sin(ang/2)
         d12 = d1*d2[:, None]
@@ -209,6 +220,10 @@ class kappa:
         w12 = w12[w]
         d12 = d12[w]
 
+        x = (phi2 - phi1) * sp.sin(th1) # SY 22/8/18
+        y = th2 - th1                   # SY
+        gamma_ang = sp.arctan2(y,x)     # SY
+
         #-- getting model and first derivative
         xi_model = kappa.xi2d(rt, rp, grid=False)
         xip_model = kappa.xi2d(rt, rp, dx=1, grid=False)
@@ -218,11 +233,14 @@ class kappa:
        
         ska = sp.sum( (d12 - xi_model)/R*w12 )
         wka = sp.sum( w12/R**2 ) 
+        gam1 = 4*sp.cos(2*gamma_ang) * sp.sum( (d12 - xi_model)/R*w12 ) # SY
+        gam2 = 4*sp.sin(2*gamma_ang) * sp.sum( (d12 - xi_model)/R*w12 ) # SY
 
-        return ska, wka
+        return ska, wka, gam1, gam2 # SY
 
     @staticmethod
-    def fast_kappa_true(z1, r1, z2, r2, ang, ang_lens):
+    def fast_kappa_true(z1, r1, z2, r2, ang, ang_lens, \
+                        th1, phi1, th2, phi2): # SY
         
         rp      = abs(r1-r2[:,None])*sp.cos(ang/2)
         rt      = (r1+r2[:,None])*sp.sin(ang/2)
@@ -240,6 +258,10 @@ class kappa:
         rt_lens = rt_lens[w]
         #z  = z[w]
 
+        x = (phi2 - phi1) * sp.sin(th1) # SY 22/8/18
+        y = th2 - th1                   # SY
+        gamma_ang = sp.arctan2(y,x)     # SY
+
         #-- getting model and first derivative
         xi_model  = kappa.xi2d(rt,      rp,       grid=False)
         xi_lens   = kappa.xi2d(rt_lens, rp_lens,  grid=False)
@@ -248,8 +270,10 @@ class kappa:
 
         ska = sp.sum( (xi_lens - xi_model)/R )
         wka = sp.sum( 1/R**2  )
+        gam1 = 4*sp.cos(2*gamma_ang) * sp.sum( (xi_lens - xi_model)/R ) # SY
+        gam2 = 4*sp.sin(2*gamma_ang) * sp.sum( (xi_lens - xi_model)/R ) # SY
 
-        return ska, wka
+        return ska, wka, gam1, gam2 # SY
 
 
 def get_radec(pos):
@@ -275,6 +299,8 @@ if __name__=='__main__':
                help='text file containing model')
     parser.add('--out', required=True, \
                help='output fits file with kappa map')
+    parser.add('--gout', required=True, \
+               help='output fits file with gamma maps') # SY
     parser.add('--nproc', required=False, type=int, default=1, \
                help='number of procs used in calculation')
     parser.add('--nspec', required=False, type=int, default=None, \
@@ -289,8 +315,6 @@ if __name__=='__main__':
                help='maximum radial separation')
     parser.add('--true_corr', required=False, default=False,\
                action='store_true', help='use actual lensed correlation')
-    parser.add('--nside', required=False, type=float, default=256, \
-               help='resolution of map')  #SY 26/2/19
     args, unknown = parser.parse_known_args()
 
     kappa.true_corr = args.true_corr
@@ -298,7 +322,6 @@ if __name__=='__main__':
     kappa.rp_min = args.rp_min
     kappa.rt_max = args.rt_max
     kappa.rp_max = args.rp_max
-    kappa.nside  = args.nside   #SY 26/2/19
     kappa.load_model(args.model)
     kappa.read_deltas(args.deltas, nspec=args.nspec)
     kappa.fill_neighs()
@@ -316,15 +339,24 @@ if __name__=='__main__':
     #-- compiling results from pool
     kap = sp.zeros(12*kappa.nside**2)
     wkap = sp.zeros(12*kappa.nside**2)
+    ga1 = sp.zeros(12*kappa.nside**2)  # SY
+    ga2 = sp.zeros(12*kappa.nside**2)  # SY
+    wgam = sp.zeros(12*kappa.nside**2) # SY
     for i, r in enumerate(results):
         print(i, len(results))
         index = N.array(r[0])
         for j in index:
             kap[j]  += r[1][j]
             wkap[j] += r[2][j]
+            ga1[j]  += r[3][j]    # SY
+            ga2[j]  += r[4][j]    # SY
+            wgam[j] += r[2][j]*2. # SY: factor of 2 comes from squaring the
+			          #  prefactors of r in the gamma estimator
     
     w = wkap>0
     kap[w]/= wkap[w]
+    ga1[w]/= wgam[w] # SY
+    ga2[w]/= wgam[w] # SY
     
     out = fitsio.FITS(args.out, 'rw', clobber=True)
     head = {}
@@ -336,5 +368,18 @@ if __name__=='__main__':
     head['NP']=kappa.np
     head['NSIDE']=kappa.nside
     out.write([kap, wkap], names=['kappa', 'wkappa'], header=head)
+    out.close()
+
+    # SY: Write gamma estimator fits file
+    out = fitsio.FITS(args.gout, 'rw', clobber=True)
+    head = {}
+    head['RPMIN']=kappa.rp_min
+    head['RPMAX']=kappa.rp_max
+    head['RTMIN']=kappa.rt_min
+    head['RTMAX']=kappa.rt_max
+    head['NT']=kappa.nt
+    head['NP']=kappa.np
+    head['NSIDE']=kappa.nside
+    out.write([ga1, ga2, wgam], names=['gamma1', 'gamma2', 'wgamma'], header=head)
     out.close()
 

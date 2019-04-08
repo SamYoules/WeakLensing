@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-
-import numpy as N
+  
+import numpy as np
 import pylab as P
 import scipy as sp
 import fitsio
@@ -13,13 +13,11 @@ from scipy import random
 import copy
 
 from picca import constants
-from picca.data import delta
+from picca.data_lens import delta ## SY 26/2/19
 
 from multiprocessing import Pool,Process,Lock,Manager,cpu_count,Value
 
 import configargparse
-
-
 
 class kappa:
 
@@ -43,6 +41,8 @@ class kappa:
     angmax = None
     z_min_pix = None
 
+    true_corr = False
+
     counter = Value('i',0)
     lock = Lock()
 
@@ -52,7 +52,7 @@ class kappa:
     @staticmethod
     def load_model(modelfile, nbins=50) :
 
-        data_rp, data_rt, xi_dist = N.loadtxt(modelfile, unpack=1)
+        data_rp, data_rt, xi_dist = np.loadtxt(modelfile, unpack=1)
 
         #-- get the larger value of the first separation bin to make a grid
         rp_min = data_rp.reshape(50, 50)[0].max()
@@ -60,8 +60,8 @@ class kappa:
         rt_min = data_rt.reshape(50, 50)[:, 0].max()
         rt_max = data_rt.reshape(50, 50)[:, -1].min()
         #-- create the regular grid for griddata
-        rp = N.linspace(rp_min, rp_max, nbins)
-        rt = N.linspace(rt_min, rt_max, nbins)
+        rp = np.linspace(rp_min, rp_max, nbins)
+        rt = np.linspace(rt_min, rt_max, nbins)
         xim = sp.interpolate.griddata((data_rt, data_rp), xi_dist, \
                     (rt[:, None], rp[None, :]), method='cubic')
 
@@ -96,10 +96,10 @@ class kappa:
         for d,p in zip(dels,pix):
             if p not in data:
                 data[p]=[]
-            data[p].append(d)
 
+            data[p].append(d)
             z = 10**d.ll/kappa.lambda_abs-1.
-            z_min_pix = sp.amin( sp.append([z_min_pix], z) ) 
+            z_min_pix = sp.amin( sp.append([z_min_pix], z) )
             d.z = z
             d.r_comov = kappa.cosmo.r_comoving(z)
             d.we *= ((1.+z)/(1.+2.25))**(2.9-1.)
@@ -128,11 +128,14 @@ class kappa:
                 w = ang<kappa.angmax
                 neighs = sp.array(neighs)[w]
                 d1.neighs = [d for d in neighs if d1.ra > d.ra]
-        
+
     @staticmethod
     def get_kappa(pixels):
 
-        fout = open('kappalists2/kappalist{}.txt'.format(pixels[0]), 'w')
+        id1 = []
+        id2 = []
+        skappa = []
+        wkappa = []
 
         for ipix in pixels:
             j=0
@@ -146,21 +149,21 @@ class kappa:
                 for d2 in d1.neighs:
                     #--  compute the cartesian mid points and convert back 
                     #--  to ra, dec
-                    mid_xcart = 0.5*(d1.xcart+d2.xcart)
-                    mid_ycart = 0.5*(d1.ycart+d2.ycart)
-                    mid_zcart = 0.5*(d1.zcart+d2.zcart)
-                    mid_ra, mid_dec = get_radec(\
-                        N.array([mid_xcart, mid_ycart, mid_zcart]))
+                    #mid_xcart = 0.5*(d1.xcart+d2.xcart)
+                    #mid_ycart = 0.5*(d1.ycart+d2.ycart)
+                    #mid_zcart = 0.5*(d1.zcart+d2.zcart)
+                    #mid_ra, mid_dec = get_radec(\
+                    #    np.array([mid_xcart, mid_ycart, mid_zcart]))
 
                     #-- apply rotation into Galactic coordinates
                     #th, phi = kappa.rot(sp.pi/2-mid_dec, mid_ra)
                     #-- keeping without rotation
-                    th, phi = sp.pi/2-mid_dec, mid_ra
+                    #th, phi = sp.pi/2-mid_dec, mid_ra
 
                     #-- check if pair of skewers belong to same spectro
-                    same_half_plate = (d1.plate == d2.plate) and\
-                            ( (d1.fid<=500 and d2.fid<=500) or \
-                            (d1.fid>500 and d2.fid>500) )
+                    #same_half_plate = (d1.plate == d2.plate) and\
+                    #        ( (d1.fid<=500 and d2.fid<=500) or \
+                    #        (d1.fid>500 and d2.fid>500) )
 
                     #-- angle between skewers
                     ang = d1^d2
@@ -168,8 +171,8 @@ class kappa:
                         ang_delensed = d1.delensed_angle(d2)
 
                     #-- getting pixel in between 
-                    mid_pix = healpy.ang2pix(kappa.nside, \
-                                  th, phi) 
+                    #mid_pix = healpy.ang2pix(kappa.nside, \
+                    #              th, phi)
 
                     if kappa.true_corr:
                         sk, wk = kappa.fast_kappa_true(\
@@ -180,24 +183,29 @@ class kappa:
                         sk, wk = kappa.fast_kappa(\
                                 d1.z, d1.r_comov, d1.we, d1.de, \
                                 d2.z, d2.r_comov, d2.we, d2.de, \
-                                ang, same_half_plate)
+                                ang)
 
-                    fout.write(str(d1.thid) +' '+ str(d2.thid) +' '+ str(sk) \
-                                + ' ' + str(wk) + '\n')                
+                    if wk != 0:
+                        id1.append(d1.thid)
+                        id2.append(d2.thid)
+                        skappa.append(sk)
+                        wkappa.append(wk)
+
 
                 setattr(d1, "neighs", None)
-        fout.close()
-        return
+
+        return id1, id2, skappa, wkappa
+
 
     @staticmethod
-    def fast_kappa(z1,r1,w1,d1,z2,r2,w2,d2,ang,same_half_plate):
+    def fast_kappa(z1,r1,w1,d1,z2,r2,w2,d2,ang):
         rp = abs(r1-r2[:,None])*sp.cos(ang/2)
         rt = (r1+r2[:,None])*sp.sin(ang/2)
         d12 = d1*d2[:, None]
         w12 = w1*w2[:,None]
 
         w = (rp>=kappa.rp_min) & (rp<=kappa.rp_max) & \
-            (rt<=kappa.rt_max) & (rt>=kappa.rp_min)
+            (rt<=kappa.rt_max) & (rt>=kappa.rt_min)
 
         rp = rp[w]
         rt = rt[w]
@@ -211,24 +219,24 @@ class kappa:
 
         #-- weight of estimator
         R = 1/(xip_model*rt)
-       
+
         ska = sp.sum( (d12 - xi_model)/R*w12 )
-        wka = sp.sum( w12/R**2 ) 
+        wka = sp.sum( w12/R**2 )
 
         return ska, wka
 
     @staticmethod
     def fast_kappa_true(z1, r1, z2, r2, ang, ang_lens):
-        
+
         rp      = abs(r1-r2[:,None])*sp.cos(ang/2)
         rt      = (r1+r2[:,None])*sp.sin(ang/2)
         rp_lens = abs(r1-r2[:,None])*sp.cos(ang_lens/2)
         rt_lens = (r1+r2[:,None])*sp.sin(ang_lens/2)
-        
+
         #z = (z1+z2[:,None])/2
 
         w = (rp>=kappa.rp_min) & (rp<=kappa.rp_max) & \
-            (rt<=kappa.rt_max) & (rt>=kappa.rp_min)
+            (rt<=kappa.rt_max) & (rt>=kappa.rt_min) ## SY 18/2/19
 
         rp = rp[w]
         rt = rt[w]
@@ -247,19 +255,17 @@ class kappa:
 
         return ska, wka
 
-
 def get_radec(pos):
-    ra = N.arctan(pos[1]/pos[0]) + N.pi + N.pi*(pos[0]>0)
-    ra -= 2*N.pi*(ra>2*N.pi)
-    dec = N.arcsin(pos[2]/N.sqrt(pos[0]**2+pos[1]**2+pos[2]**2))
+    ra = np.arctan(pos[1]/pos[0]) + np.pi + np.pi*(pos[0]>0)
+    ra -= 2*np.pi*(ra>2*np.pi)
+    dec = np.arcsin(pos[2]/np.sqrt(pos[0]**2+pos[1]**2+pos[2]**2))
     return ra, dec
 
 
 
 def compute_kappa(p):
-    kappa.get_kappa(p)
-    return
-            
+    id1, id2, skappa, wkappa = kappa.get_kappa(p)
+    return id1, id2, skappa, wkappa
 
 if __name__=='__main__':
 
@@ -268,7 +274,9 @@ if __name__=='__main__':
     parser.add('--deltas', required=True, type=str, \
                help='folder containing deltas in pix format')
     parser.add('--model', required=True, \
-               help='text file containing model')
+               help='text file containing model') 
+    parser.add('--out', required=True, \
+               help='output fits file with kappa values')
     parser.add('--nproc', required=False, type=int, default=1, \
                help='number of procs used in calculation')
     parser.add('--nspec', required=False, type=int, default=None, \
@@ -283,6 +291,8 @@ if __name__=='__main__':
                help='maximum radial separation')
     parser.add('--true_corr', required=False, default=False,\
                action='store_true', help='use actual lensed correlation')
+    parser.add('--nside', required=False, type=float, default=256, \
+               help='resolution of map')  #SY 26/2/19
     args, unknown = parser.parse_known_args()
 
     kappa.true_corr = args.true_corr
@@ -290,6 +300,7 @@ if __name__=='__main__':
     kappa.rp_min = args.rp_min
     kappa.rt_max = args.rt_max
     kappa.rp_max = args.rp_max
+    kappa.nside  = args.nside   #SY 26/2/19
     kappa.load_model(args.model)
     kappa.read_deltas(args.deltas, nspec=args.nspec)
     kappa.fill_neighs()
@@ -300,8 +311,36 @@ if __name__=='__main__':
 
     print(' ', len(kappa.data.keys()), 'pixels with data')
     pool = Pool(processes=args.nproc)
-    pool.map(compute_kappa, cpu_data.values())
+    results = pool.map(compute_kappa, cpu_data.values())
     pool.close()
-    print('')
+    #print('', results)
+
+    id1 = np.empty(0, dtype=int)
+    id2 = np.empty(0, dtype=int)
+    skappa = np.empty(0)
+    wkappa = np.empty(0)
+    
+    for r in results:
+        id1 = np.append(id1, np.array(r[0]).astype(int))
+        id2 = np.append(id2, np.array(r[1]).astype(int))
+        skappa = np.append(skappa, np.array(r[2]))
+        wkappa = np.append(wkappa, np.array(r[3]))
+
+
+    out = fitsio.FITS(args.out, 'rw', clobber=True)
+    head = {}
+    head['RPMIN']=kappa.rp_min
+    head['RPMAX']=kappa.rp_max
+    head['RTMIN']=kappa.rt_min
+    head['RTMAX']=kappa.rt_max
+    head['NT']=kappa.nt
+    head['NP']=kappa.np
+    head['NSIDE']=kappa.nside
+    out.write([id1, id2, skappa, wkappa],
+              names=['THID1', 'THID2', 'SKAPPA', 'WKAPPA'],
+              header=head)
+    out.close()
+
+
 
 

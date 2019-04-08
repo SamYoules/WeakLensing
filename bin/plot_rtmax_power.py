@@ -13,6 +13,7 @@ import kappa_lya
 from kappa_lya import *
 import sys
 from collections import OrderedDict
+import matplotlib.gridspec as gridspec
 
 def get_Cls(rtmax, k_input, NSIDE):
     '''Open estimated kappa files, mask them and calculate their C_ells'''
@@ -42,34 +43,67 @@ for i in a:
     Cl_in.append(inp)
     Cl_est.append(est)
 
-##- Setup figure with 3 subplots
+##- Setup figures
+P.rcParams.update({'font.size':14})
 P.ion()
-P.rcParams.update({'font.size':20})
-fig, axs = P.subplots(1, 3, figsize=(18, 6))
-fig.set_facecolor('white')
-P.subplots_adjust(top=0.9, bottom=0.08, left=0.08, right=0.95, hspace=0.2,
-                    wspace=0.35)
-P.setp(axs, xticks=[0, 200, 400, 600, 800], xlim=([0, 800]))
 ncolors=10
 colors = P.cm.jet(np.linspace(0,1,ncolors))
 
+##- Setup 3 subplots with right-hand axis labels
+gs = gridspec.GridSpec(3, 1, hspace = 0.2, wspace=0.3)
+fig = P.figure(figsize=(7,11))
+
+ax1 = P.subplot(gs[0, 0]) # row 0, col 0
+ax1.text(1.02, 0.5, "Estimated",
+         horizontalalignment='left',
+         verticalalignment='center',
+         rotation=90,
+         clip_on=False,
+         transform=P.gca().transAxes)
+
+ax2 = P.subplot(gs[1, 0]) # row 1, col 0
+ax2.text(1.02, 0.5, "Input (masked)",
+         horizontalalignment='left',
+         verticalalignment='center',
+         rotation=90,
+         clip_on=False,
+         transform=P.gca().transAxes)
+
+ax3 = P.subplot(gs[2, 0]) # row 2, col 0
+ax3.text(1.02, 0.5, "Estimated / Input",
+         horizontalalignment='left',
+         verticalalignment='center',
+         rotation=90,
+         clip_on=False,
+         transform=P.gca().transAxes)
+P.setp(ax3, xticks=[0, 200, 400, 600, 800], xlim=([0, 800]))
+
+
 ##- Plot figure
 for i in np.arange(10):
-    axs[0].plot(Cl_est[i], color=colors[i], lw=2, linestyle="-", label="rtmax={}".format(a[i]))
-    axs[1].plot(Cl_in[i], color=colors[i], lw=2, linestyle="-", label="rtmax={}".format(a[i]))
-    axs[2].plot(Cl_est[i]/Cl_in[i], color=colors[i], lw=2, linestyle="-", label="rtmax={}".format(a[i]))
+    ax1.plot(Cl_est[i], color=colors[i], lw=2, linestyle="-", label="rtmax={}".format(a[i]))
+    ax2.plot(Cl_in[i], color=colors[i], lw=2, linestyle="-", label="rtmax={}".format(a[i]))
+    ax3.plot(Cl_est[i]/Cl_in[i], color=colors[i], lw=2, linestyle="-", label="rtmax={}".format(a[i]))
 
-axs[0].set_ylabel(r'Estimated $C_l$')
-axs[1].set_ylabel(r'Input (masked) $C_l$')
-axs[2].set_ylabel('Ratio of Estimated/Input')
-axs[0].set_ylim([0,2.5e-8])
-axs[1].set_ylim([0,2.5e-8])
-axs[2].set_ylim([0,3.5])
+ax1.set_ylabel(r'$\ell C_{\ell}^{\kappa \kappa}$', fontsize=18)
+ax2.set_ylabel(r'$\ell C_{\ell}^{\kappa \kappa}$', fontsize=18)
+ax3.set_ylabel(r'$\ell C_{\ell}^{\kappa \kappa}$', fontsize=18)
+ax1.set_ylim([0,2.5e-8])
+ax2.set_ylim([0,2.5e-8])
+ax3.set_ylim([0,3.5])
+ax1.set_xticks([0, 200, 400, 600, 800])
+ax2.set_xticks([0, 200, 400, 600, 800])
+ax3.set_xticks([0, 200, 400, 600, 800])
+ax1.set_xlim([0, 800])
+ax2.set_xlim([0, 800])
+ax3.set_xlim([0, 800])
+ax3.set_xlabel(r'$\ell$', fontsize=18)
+
 #axs[0].set_yscale('symlog', linthreshy=1e-8)
 P.ticklabel_format(style='sci', axis='y', scilimits=(0,0), useOffset=False)
 handles, labels = P.gca().get_legend_handles_labels()
 by_label = OrderedDict(zip(labels, handles))
-axs[0].legend(by_label.values(), by_label.keys(), numpoints = 1, loc = 'upper right', fontsize=18)
-axs[1].legend(by_label.values(), by_label.keys(), numpoints = 1, loc = 'upper right', fontsize=18)
+ax1.legend(by_label.values(), by_label.keys(), numpoints = 1, loc = 'upper right', fontsize=14, ncol=2)
 
+#P.savefig('plots/rtmax_vertical.pdf', bbox_inches='tight')
 

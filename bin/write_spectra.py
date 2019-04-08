@@ -41,7 +41,7 @@ def get_correlations(filenumber, maptype, NSIDE):
     Cl_input = hp.sphtfunc.anafast(kinput, lmax=3*NSIDE-1)
     return Cl_auto, Cl_cross, Cl_input
 
-##- Get map type name (e.g. noisy_smoothed)
+##- Get map type name (e.g. xnoisy)
 maptype = sys.argv[1]
 
 ##- Open a kappa file to get nside and create mask
@@ -69,9 +69,9 @@ Cl_array = np.asarray(C_ells)
 Cl_autos = Cl_array[:,0]
 Cl_crosses = Cl_array[:,1]
 Cl_inputs = Cl_array[:,2]
-np.savetxt('Cl_autos_{}.txt'.format(maptype), Cl_autos)
-np.savetxt('Cl_crosses_{}.txt'.format(maptype), Cl_crosses)
-np.savetxt('Cl_inputs_{}.txt'.format(maptype), Cl_inputs)
+np.savetxt('Cls/Cl_autos_{}.txt'.format(maptype), Cl_autos)
+np.savetxt('Cls/Cl_crosses_{}.txt'.format(maptype), Cl_crosses)
+np.savetxt('Cls/Cl_inputs_{}.txt'.format(maptype), Cl_inputs)
 
 
 
