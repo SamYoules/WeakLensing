@@ -176,7 +176,7 @@ class kappa:
                     #-- angle between skewers
                     ang = d^q
                     if kappa.true_corr:
-                        ang_delensed = d.delensed_angle_qso(q)
+                        ang_delensed = d.delensed_angle(q)
  
                     #-- getting pixel in between 
                     #mid_pix = healpy.ang2pix(kappa.nside, \
@@ -318,8 +318,6 @@ if __name__=='__main__':
     parser.add('--true_corr', required=False, default=False,\
                action='store_true', help='use actual lensed correlation')
     args, unknown = parser.parse_known_args()
-    parser.add('--nside', required=False, type=float, default=256, \
-               help='resolution of map') #SY 26/2/19
 
     ### Read objects
     cosmo = constants.cosmo(args.fid_Om)

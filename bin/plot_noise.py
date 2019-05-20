@@ -33,14 +33,14 @@ barcolours=['#7293CB','#D35E60','#84BA5B','#E1974C','#808585','#9067A7','#AB6857
 
 nside = 128
 rtmax = 100
-#srad = '01'
-#sradius = 0.1
-srad = ['01', '05', '10']
-sradius = [0.1, 0.5, 1.0]
-#damp = ['01', '05', '10']
-#damping = ['0.1', '0.5', '1.0']
-damp = '01'
-damping = 0.1
+srad = '01'
+sradius = 0.1
+#srad = ['01', '05', '10']
+#sradius = [0.1, 0.5, 1.0]
+damp = ['01', '05', '10']
+damping = ['0.1', '0.5', '1.0']
+#damp = '01'
+#damping = 0.1
 dir = 'kappa_opt_srad/cls/'
 
 ##- Get midpoint noise
@@ -59,11 +59,11 @@ noisefit=fitfunc_noise(fit.x)
 print (fit.x)
 
 
-#for i,j in enumerate(damp):
-#    fsuffix ='_cut_{}_{}_{}_{}.txt'.format(nside, rtmax, srad, j)
-for i,j in enumerate(srad):
-    fsuffix ='_cut_{}_{}_{}_{}.txt'.format(nside, rtmax, j, damp)
-    fin = [dir+'cl_auto{}'.format(fsuffix), dir+'cl_cross{}'.format(fsuffix), dir+'cl_input_{}.txt'.format(nside)]
+for i,j in enumerate(damp):
+    fsuffix ='_{}_{}_{}_{}.txt'.format(nside, rtmax, srad, j)
+#for i,j in enumerate(srad):
+#    fsuffix ='_{}_{}_{}_{}.txt'.format(nside, rtmax, j, damp)
+    fin = [dir+'cl_auto_lsqr_cut{}'.format(fsuffix), dir+'cl_cross_lsqr_cut{}'.format(fsuffix), dir+'cl_input_{}.txt'.format(nside)]
 
     ##- Get the Cls
     auto,cross,autoin=[loadps(fn) for fn in fin]
@@ -81,8 +81,8 @@ for i,j in enumerate(srad):
     noise=auto*transfit**2-autoin
 
     ##- Fit the noise with another smooth function (const + decaying exponential)
-    #plt.plot(ell,noise, color=plotcolours[i], lw=2, linestyle="-", label='damp={}'.format(damping[i]))
-    plt.plot(ell,noise, color=plotcolours[i], lw=2, linestyle="-", label='srad={}'.format(sradius[i]))
+    plt.plot(ell,noise, color=plotcolours[i], lw=2, linestyle="-", label='damping={}'.format(damping[i]))
+    #plt.plot(ell,noise, color=plotcolours[i], lw=2, linestyle="-", label='srad={}'.format(sradius[i]))
     fitfunc_noise=lambda x:1e-7*(x[0]+x[1]*np.exp(-ell/x[2]))
     fit=opt.least_squares(lambda x:1e8*(fitfunc_noise(x)-noise),[0.3,1.2,100])
     noisefit=fitfunc_noise(fit.x)
@@ -90,9 +90,9 @@ for i,j in enumerate(srad):
     plt.plot(ell,noisefit, 'y-')
     print (fit.x)
 
-#plt.legend(loc='lower left')
-#plt.annotate(r'Noise power spectrum, nside={}, sradius={}'.format(nside, sradius), xy= (0.15, 0.95), xycoords='axes fraction')
-plt.legend(loc='center right')
-plt.annotate(r'Noise power spectrum, nside={}, damping={}'.format(nside, damping), xy= (0.15, 0.95), xycoords='axes fraction')
+plt.legend(loc='lower left')
+plt.annotate(r'Noise power spectrum (lsqr), nside={}, sradius={}'.format(nside, sradius), xy= (0.15, 0.95), xycoords='axes fraction')
+#plt.legend(loc='center right')
+#plt.annotate(r'Noise power spectrum, nside={}, damping={}'.format(nside, damping), xy= (0.15, 0.95), xycoords='axes fraction')
 
 

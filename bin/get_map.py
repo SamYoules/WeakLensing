@@ -76,7 +76,9 @@ class Analysis:
         A=self.getAMatrix()
         b=self.d.signal*np.sqrt(self.d.weight) ## (we suppressed by weight)
         print ("running solver")
-        mp=lsmr(A,b,show=True)
+        mp=lsmr(A,b,atol=1e-06, btol=1e-06, show=True) ## SY 15/4/19
+        #mp=lsmr(A,b,show=True)
+        #mp=lsqr(A,b,show=True) ## SY 13/4/19
         print (mp[0])
         print (mp[1])
         print (mp[2])
@@ -89,15 +91,13 @@ class Analysis:
         pixels = self.pixid
         kappas = np.array(mp[0])
         if realn == 0:
-            if damping == 1.:
-                np.savez('kappa_opt_srad/kappa_{}_rt{}_rp{}_nside{}_srad{}'.format \
-                  (maptype, rtmax, rpmax, nside, srad), nside, pixels, kappas)
-            else:
-                np.savez('kappa_opt_srad/kappa_{}_rt{}_rp{}_nside{}_srad{}_{}'.format \
-                  (maptype, rtmax, rpmax, nside, srad, damping), nside, pixels, kappas)
+            #np.savez('kappa_opt_srad/kappa_{}_rt{}_rp{}_nside{}_srad{}_{}'.format \
+            np.savez('kappa_opt_srad/kappa_{}_rt{}_rp{}_nside{}_srad{}_{}'.format \
+              (maptype, rtmax, rpmax, nside, srad, damping), nside, pixels, kappas)
         else:
-            np.savez('kappa_realisations/kappa_{}_rt{}_rp{}_nside{}_srad{}_{}'.format \
-                 (maptype, rtmax, rpmax, nside, srad, realn), nside, pixels, kappas)
+            #np.savez('kappa_realisations/kappa_{}_rt{}_rp{}_nside{}_srad{}_{}'.format \
+            #     (maptype, rtmax, rpmax, nside, srad, realn), nside, pixels, kappas)
+            np.savez('est_opt_{}/kappa{}'.format(maptype, realn), nside, pixels, kappas)
            
          
     def getAMatrix(self):
@@ -150,8 +150,9 @@ class Analysis:
             dx=dx1-dx2
             dy=dy1-dy2
             dz=dz1-dz2
-            ## total response is movevement/distance
-            totresponse= (dxr*dx+dyr*dy+dzr*dz)/(dx*dx+dy*dy+dz*dz)
+            ## total response is movement/distance
+            totresponse= np.sqrt(dxr*dxr+dyr*dyr+dzr*dzr)/np.sqrt(dx*dx+dy*dy+dz*dz) #SY 17/4/19
+            #totresponse= (dxr*dx+dyr*dy+dzr*dz)/(dx*dx+dy*dy+dz*dz)
             totresponse*=np.sqrt(self.d.weight[s])  ## we downweigh response by weight
             A[i,s]=totresponse
             if (i%100==0):
