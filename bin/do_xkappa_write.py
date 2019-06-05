@@ -3,7 +3,7 @@
 ## 17/12/18
 ## Calculate kappa for midpoint between quasars using estimator for lya x qso
 
-import numpy as N
+import numpy as np
 import pylab as P
 import scipy as sp
 import fitsio
@@ -14,14 +14,10 @@ import healpy
 import sys
 from scipy import random
 import copy
-
 from picca import constants, xcf, io_lens
 from picca.data_lens import delta
-
 from multiprocessing import Pool,Process,Lock,Manager,cpu_count,Value
-
-import configargparse
-
+import h5py ## SY 5/6/19
 
 
 class kappa:
@@ -52,20 +48,51 @@ class kappa:
     data={}
     ndata=0
 
-    @staticmethod
-    def load_model(modelfile, nbins=50) :
+    #@staticmethod
+    #def load_model(modelfile, nbins=50) :
 
-        data_rp, data_rt, xi_dist = N.loadtxt(modelfile, unpack=1)
+    #    data_rp, data_rt, xi_dist = np.loadtxt(modelfile, unpack=1)
 
         #-- get the larger value of the first separation bin to make a grid
-        rp_min = data_rp.reshape(100, 50)[0].max()
-        rp_max = data_rp.reshape(100, 50)[-1].min()
-        rt_min = data_rt.reshape(100, 50)[:, 0].max()
-        rt_max = data_rt.reshape(100, 50)[:, -1].min()
+    #    rp_min = data_rp.reshape(100, 50)[0].max()
+    #    rp_max = data_rp.reshape(100, 50)[-1].min()
+    #    rt_min = data_rt.reshape(100, 50)[:, 0].max()
+    #    rt_max = data_rt.reshape(100, 50)[:, -1].min()
         #-- create the regular grid for griddata
-        rp = N.linspace(rp_min, rp_max, nbins*2)
-        rt = N.linspace(rt_min, rt_max, nbins)
-        xim = sp.interpolate.griddata((data_rt, data_rp), xi_dist, \
+    #    rp = np.linspace(rp_min, rp_max, nbins*2)
+    #    rt = np.linspace(rt_min, rt_max, nbins)
+    #    xim = sp.interpolate.griddata((data_rt, data_rp), xi_dist, \
+    #                (rt[:, None], rp[None, :]), method='cubic')
+
+        #-- create interpolator object
+    #    xi2d = sp.interpolate.RectBivariateSpline(rt, rp, xim)
+
+    #    kappa.xi2d = xi2d
+    #    return xi2d
+
+    ## - SY 4/6/19 Changed to use new picca model and fit files
+
+    @staticmethod
+    def load_model(file_xi, file_fit, nbins=50) :
+
+        h = fitsio.FITS(file_xi)
+        ff = h5py.File(file_fit, 'r')
+        base = file_xi 
+        fit = ff[base+'/fit'][...] 
+        data_rp = h[1]['RP'][:]
+        data_rt = h[1]['RT'][:]
+        hh = h[1].read_header()
+        rpmin = hh['RPMIN']
+        rpmax = hh['RPMAX']
+        rtmin = 0 
+        rtmax = hh['RTMAX']
+        h.close()
+        ff.close()
+
+        #-- create the regular grid for griddata
+        rp = np.linspace(rpmin, rpmax, nbins*2)
+        rt = np.linspace(rtmin, rtmax, nbins)
+        xim = sp.interpolate.griddata((data_rt, data_rp), fit, \
                     (rt[:, None], rp[None, :]), method='cubic')
 
         #-- create interpolator object
@@ -161,7 +188,7 @@ class kappa:
                     #mid_ycart = 0.5*(d.ycart+q.ycart)
                     #mid_zcart = 0.5*(d.zcart+q.zcart)
                     #mid_ra, mid_dec = get_radec(\
-                    #    N.array([mid_xcart, mid_ycart, mid_zcart]))
+                    #    np.array([mid_xcart, mid_ycart, mid_zcart]))
 
                     #-- apply rotation into Galactic coordinates
                     #th, phi = kappa.rot(sp.pi/2-mid_dec, mid_ra)
@@ -259,9 +286,9 @@ class kappa:
 
 
 def get_radec(pos):
-    ra = N.arctan(pos[1]/pos[0]) + N.pi + N.pi*(pos[0]>0)
-    ra -= 2*N.pi*(ra>2*N.pi)
-    dec = N.arcsin(pos[2]/N.sqrt(pos[0]**2+pos[1]**2+pos[2]**2))
+    ra = np.arctan(pos[1]/pos[0]) +np.pi + np.pi*(pos[0]>0)
+    ra -= 2*np.pi*(ra>2*np.pi)
+    dec = np.arcsin(pos[2]/np.sqrt(pos[0]**2+pos[1]**2+pos[2]**2))
     return ra, dec
 
 
@@ -273,17 +300,20 @@ def compute_kappa(p):
 
 if __name__=='__main__':
 
-    parser = configargparse.ArgParser()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description='Compute the convergence (kappa) between qsos and deltas.')
 
-    parser.add('--deltas', required=True, type=str, \
+    parser.add_argument('--deltas', required=True, type=str, \
                help='folder containing deltas in pix format')
-    parser.add('--model', required=True, \
-               help='text file containing model')
-    parser.add('--out', required=True, \
+    parser.add_argument('--xi', required=True, \
+               help='text file containing model') # SY 5/6/19
+    parser.add_argument('--fit', required=True, \
+               help='text file containing fit')  # SY 5/6/19
+    parser.add_argument('--out', required=True, \
                help='output fits file with kappa map')
-    parser.add('--nproc', required=False, type=int, default=1, \
+    parser.add_argument('--nproc', required=False, type=int, default=1, \
                help='number of procs used in calculation')
-    parser.add('--nspec', required=False, type=int, default=None, \
+    parser.add_argument('--nspec', required=False, type=int, default=None, \
                help='number of spectra to process')
     parser.add_argument('--drq', type=str, default=None, \
                required=True, help='Catalog of objects in DRQ format')
@@ -307,15 +337,15 @@ if __name__=='__main__':
     parser.add_argument('--fid-Om', type=float, default=0.315, \
                required=False, help='Omega_matter(z=0) of fiducial LambdaCDM \
                cosmology')
-    parser.add('--rt_min', required=False, type=float, default=3., \
+    parser.add_argument('--rt_min', required=False, type=float, default=3., \
                help='minimum transverse separation')
-    parser.add('--rp_min', required=False, type=float, default=3., \
+    parser.add_argument('--rp_min', required=False, type=float, default=3., \
                help='minimum radial separation')
-    parser.add('--rt_max', required=False, type=float, default=40., \
+    parser.add_argument('--rt_max', required=False, type=float, default=40., \
                help='maximum transverse separation')
-    parser.add('--rp_max', required=False, type=float, default=10., \
+    parser.add_argument('--rp_max', required=False, type=float, default=10., \
                help='maximum radial separation')
-    parser.add('--true_corr', required=False, default=False,\
+    parser.add_argument('--true_corr', required=False, default=False,\
                action='store_true', help='use actual lensed correlation')
     args, unknown = parser.parse_known_args()
 
@@ -335,7 +365,7 @@ if __name__=='__main__':
     kappa.nside  = args.nside        #SY 26/2/19
     kappa.z_cut_max = args.z_cut_max #SY 13/2/19
     kappa.z_cut_min = args.z_cut_min #SY 13/2/19
-    kappa.load_model(args.model)
+    kappa.load_model(args.xi, args.fit) # SY 5/6/19
     kappa.read_deltas(args.deltas, nspec=args.nspec)
     kappa.fill_neighs()
 
@@ -349,16 +379,16 @@ if __name__=='__main__':
     pool.close()
     print('')
 
-    id1 = N.empty(0, dtype=int)
-    id2 = N.empty(0, dtype=int)
-    skappa = N.empty(0)
-    wkappa = N.empty(0)
+    id1 = np.empty(0, dtype=int)
+    id2 = np.empty(0, dtype=int)
+    skappa = np.empty(0)
+    wkappa = np.empty(0)
     
     for r in results:
-        id1 = N.append(id1, N.array(r[0]).astype(int))
-        id2 = N.append(id2, N.array(r[1]).astype(int))
-        skappa = N.append(skappa, N.array(r[2]))
-        wkappa = N.append(wkappa, N.array(r[3]))
+        id1 = np.append(id1, np.array(r[0]).astype(int))
+        id2 = np.append(id2, np.array(r[1]).astype(int))
+        skappa = np.append(skappa, np.array(r[2]))
+        wkappa = np.append(wkappa, np.array(r[3]))
 
     
     out = fitsio.FITS(args.out, 'rw', clobber=True)

@@ -1,35 +1,52 @@
-# move_forests.py
 # Author: Sam Youles
-# 19/4/18
-# Uses amap.fits (created in lensing_maps.py) to add bend angles from a lens to
-# the RA and DEC of forests in the delta-{}.fits.gz files (from do_deltas.py)
-# Writes textfile of old and new RA and DEC
-# user input: run move_forests.py delta-files-directory-name
+# Modified by Julian Bautista
+# Last update 31/5/19
+# Uses seed (between 1 and 100) that corresponds to the input maps to produce
+# bend angles with which to lens the deltas.
 
-#from astropy.io import fits
-import numpy as N
+import numpy as np
 import healpy as hp
-import sys
 import glob
 import os
 import fitsio
+from kappa_lya import *
+import argparse
+import configargparse
 
-# input
-indir = sys.argv[1]
-amap = sys.argv[2]
-outdir = sys.argv[3]
 
-# Load bend angles from alpha map into an array
-amap_plus = hp.fitsfunc.read_map(amap, field=0)
-amap_minus = hp.fitsfunc.read_map(amap, field=1)
-NSIDE = 256
+#-- Input arguments
+
+parser = configargparse.ArgParser()
+
+parser.add('--indir', required=True, type=str, \
+           help='folder containing deltas')
+parser.add('--outdir', required=True, type=str, \
+           help='folder containing lensed deltas') 
+parser.add('--mapnumber', required=False, type=int, default=1, \
+           help='index number of input map')
+args, unknown = parser.parse_known_args()
+
+indir = args.indir
+outdir = args.outdir
+mapnumber = args.mapnumber
+
+
+#-- Create angular power spectrum of kappa
+theory = Theory()
+ell, cell = theory.get_cl_kappa(2.1, kmax=100., nz=100, lmax=10000)
+
+nside=1024
+npix=nside**2*12
+seed=int(mapnumber)
+np.random.seed(seed)
+kappa = create_gaussian_kappa(ell, cell, nside=nside, seed=seed)
+
 
 # Amend DEC and RA in each of the delta files by the bend angle from alpha map
 alldeltas = glob.glob(indir+'/*.fits.gz')
 ndel = len(alldeltas)
 i=0
 for filename in alldeltas:
-    #hdus = fits.open(filename)
     hdus = fitsio.FITS(filename)
     print(i, ndel)
     i+=1
@@ -41,18 +58,14 @@ for filename in alldeltas:
         ra = header['RA']
         dec = header['DEC']
 
-        # Convert RA and DEC to index to find corresponding pixel in amap
-        # Note: theta is defined in the range [0,pi] and declination is defined in
-        # the range [-pi/2,pi/2].
-        index = hp.pixelfunc.ang2pix(NSIDE, -dec + N.pi/2., ra)
-
         # Add bend angles to ra and dec
-        ra_lens = ra - amap_plus[index]
-        dec_lens = dec - amap_minus[index]
-
+        theta_lens, phi_lens = kappa.displace_objects(np.pi/2-dec, ra) 
+        
         # Rewrite new delta file with new values
-        header['RA_LENS'] = ra_lens
-        header['DEC_LENS'] = dec_lens
+        header['RA'] = phi_lens
+        header['DEC'] = np.pi/2-theta_lens
+        header['RA0'] = ra
+        header['DEC0'] = dec
       
         #-- Re-create columns (maybe there's a better way to do this?) 
         ll = hdu['LOGLAM'][:]

@@ -1,7 +1,11 @@
+#!/usr/bin/env python
+## SY 23/5/19
+## Read in kappalist file (qso pairwise kappa) and produce midpoint-estimator xkappa file
+
 from astropy.table import Table, join
 import numpy as np
 import healpy as hp
-import sys
+import argparse
 import fitsio
 
 def get_radec(thid_in, ra_in, dec_in, thid_out):
@@ -55,34 +59,65 @@ def make_map(nside, ra1, dec1, ra2, dec2, skappa, wkappa):
     return kappa_map, wmap
 
 
-#-- read list of kappas
-kap = Table.read(sys.argv[1]) #SY 11/2/19
+if __name__=='__main__':
 
-#-- read QSO catalog with THING_ID, RA and DEC information 
-drq = Table.read('zcat_desi_drq_lensed.fits') #SY 10/2/19
-drq.remove_columns(['Z', 'PLATE', 'MJD', 'FIBERID','RA0','DEC0']) #SY 11/2/19
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description='Creates estimated kappa map for QSOxLYA using midpoint.')
 
-ra1, dec1 = get_radec(drq['THING_ID'].data, drq['RA'].data, drq['DEC'].data,
-                      kap['THID'].data)  #SY 11/2/19
-ra2, dec2 = get_radec(drq['THING_ID'].data, drq['RA'].data, drq['DEC'].data,
-                      kap['THIDQ'].data)  #SY 11/2/19
-skappa = kap['SKAPPA'].data
-wkappa = kap['WKAPPA'].data
+    parser.add_argument('--mapin', required=True, type=str, \
+               help='pathname to kappalist fits file')
+    parser.add_argument('--mapout', required=True, type=str, \
+               help='output fits file with kappa values') 
+    parser.add_argument('--rt_min', required=False, type=float, default=3., \
+               help='minimum transverse separation')
+    parser.add_argument('--rp_min', required=False, type=float, default=3., \
+               help='minimum radial separation')
+    parser.add_argument('--rt_max', required=True, type=float, default=40., \
+               help='maximum transverse separation')
+    parser.add_argument('--rp_max', required=True, type=float, default=10., \
+               help='maximum radial separation')
+    parser.add_argument('--nside', required=False, type=int, default=256, \
+               help='resolution of map')
+    parser.add_argument('--zcat', required=False, type=str, \
+               help='catalogue file')
+    args, unknown = parser.parse_known_args()
 
-nside = 256
-kappa_map, wmap = make_map(nside, ra1, dec1, ra2, dec2, skappa, wkappa)
+    mapin  = args.mapin
+    mapout = args.mapout
+    rt_min = args.rt_min
+    rp_min = args.rp_min
+    rt_max = args.rt_max
+    rp_max = args.rp_max
+    nside  = args.nside
+    zcat   = args.zcat
+ 
+    #-- read list of kappas
+    kap = Table.read(mapin)
 
-##- Write map # SY 11/2/19
-out = fitsio.FITS(sys.argv[2], 'rw', clobber=True)
-head = {}
-head['RPMIN']=-100. # SY 12/2/19
-head['RPMAX']=100.
-head['RTMIN']=3.
-head['RTMAX']=70.
-head['NT']=1
-head['NP']=1
-head['NSIDE']=nside
-out.write([kappa_map, wmap], names=['kappa', 'wkappa'], header=head)
-out.close()
+    #-- read QSO catalog with THING_ID, RA and DEC information 
+    drq = Table.read(zcat)
+    drq.remove_columns(['Z', 'PLATE', 'MJD', 'FIBERID','RA0','DEC0'])
+
+    ra1, dec1 = get_radec(drq['THING_ID'].data, drq['RA'].data, drq['DEC'].data,
+                      kap['THIDQ'].data)
+    ra2, dec2 = get_radec(drq['THING_ID'].data, drq['RA'].data, drq['DEC'].data,
+                      kap['THID'].data)
+    skappa = kap['SKAPPA'].data
+    wkappa = kap['WKAPPA'].data
+
+    kappa_map, wmap = make_map(nside, ra1, dec1, ra2, dec2, skappa, wkappa)
+
+    ##- Write map
+    out = fitsio.FITS(mapout, 'rw', clobber=True)
+    head = {}
+    head['RPMIN']=rp_min
+    head['RPMAX']=rp_max
+    head['RTMIN']=rt_min
+    head['RTMAX']=rt_max
+    head['NT']=1
+    head['NP']=1
+    head['NSIDE']=nside
+    out.write([kappa_map, wmap], names=['kappa', 'wkappa'], header=head)
+    out.close()
 
 
