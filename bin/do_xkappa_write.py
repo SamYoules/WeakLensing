@@ -13,6 +13,7 @@ import glob
 import healpy
 import sys
 from scipy import random
+from scipy import interpolate ## SY 7/6/19
 import copy
 from picca import constants, xcf, io_lens
 from picca.data_lens import delta
@@ -48,30 +49,8 @@ class kappa:
     data={}
     ndata=0
 
-    #@staticmethod
-    #def load_model(modelfile, nbins=50) :
-
-    #    data_rp, data_rt, xi_dist = np.loadtxt(modelfile, unpack=1)
-
-        #-- get the larger value of the first separation bin to make a grid
-    #    rp_min = data_rp.reshape(100, 50)[0].max()
-    #    rp_max = data_rp.reshape(100, 50)[-1].min()
-    #    rt_min = data_rt.reshape(100, 50)[:, 0].max()
-    #    rt_max = data_rt.reshape(100, 50)[:, -1].min()
-        #-- create the regular grid for griddata
-    #    rp = np.linspace(rp_min, rp_max, nbins*2)
-    #    rt = np.linspace(rt_min, rt_max, nbins)
-    #    xim = sp.interpolate.griddata((data_rt, data_rp), xi_dist, \
-    #                (rt[:, None], rp[None, :]), method='cubic')
-
-        #-- create interpolator object
-    #    xi2d = sp.interpolate.RectBivariateSpline(rt, rp, xim)
-
-    #    kappa.xi2d = xi2d
-    #    return xi2d
 
     ## - SY 4/6/19 Changed to use new picca model and fit files
-
     @staticmethod
     def load_model(file_xi, file_fit, nbins=50) :
 
@@ -88,6 +67,11 @@ class kappa:
         rtmax = hh['RTMAX']
         h.close()
         ff.close()
+
+        rpmin = data_rp.reshape(100, 50)[0].max()
+        rpmax = data_rp.reshape(100, 50)[-1].min()
+        rtmin = data_rt.reshape(100, 50)[:, 0].max()
+        rtmax = data_rt.reshape(100, 50)[:, -1].min()
 
         #-- create the regular grid for griddata
         rp = np.linspace(rpmin, rpmax, nbins*2)
@@ -244,14 +228,14 @@ class kappa:
         rt = rt[w]
         we = we[w]
         de = de[w]
-
+ 
         #-- getting model and first derivative
         xi_model = kappa.xi2d(rt, rp, grid=False)
         xip_model = kappa.xi2d(rt, rp, dx=1, grid=False)
 
         #-- weight of estimator
         R = 1/(xip_model*rt)
-       
+
         ska = sp.sum( (de - xi_model)/R*we )
         wka = sp.sum( we/R**2 ) 
 

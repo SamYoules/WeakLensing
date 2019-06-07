@@ -10,6 +10,7 @@ import glob
 import healpy
 import sys
 from scipy import random
+from scipy import interpolate ## SY 7/6/19
 import copy
 from picca import constants
 from picca.data_lens import delta ## SY 26/2/19
@@ -46,28 +47,6 @@ class kappa:
     data={}
     ndata=0
 
-    #@staticmethod
-    #def load_model(modelfile, nbins=50) :
-
-    #    data_rp, data_rt, xi_dist = np.loadtxt(modelfile, unpack=1)
-
-        #-- get the larger value of the first separation bin to make a grid
-    #    rp_min = data_rp.reshape(50, 50)[0].max()
-    #    rp_max = data_rp.reshape(50, 50)[-1].min()
-    #    rt_min = data_rt.reshape(50, 50)[:, 0].max()
-    #    rt_max = data_rt.reshape(50, 50)[:, -1].min()
-        #-- create the regular grid for griddata
-    #    rp = np.linspace(rp_min, rp_max, nbins)
-    #    rt = np.linspace(rt_min, rt_max, nbins)
-    #    xim = sp.interpolate.griddata((data_rt, data_rp), xi_dist, \
-    #                (rt[:, None], rp[None, :]), method='cubic')
-
-        #-- create interpolator object
-    #    xi2d = sp.interpolate.RectBivariateSpline(rt, rp, xim)
-
-    #    kappa.xi2d = xi2d
-    #    return xi2d
-
 
     ## - SY 4/6/19 Changed to use new picca model and fit files
     @staticmethod
@@ -86,6 +65,11 @@ class kappa:
         rtmax = hh['RTMAX']
         h.close()
         ff.close()
+
+        rpmin = data_rp.reshape(100, 50)[0].max()
+        rpmax = data_rp.reshape(100, 50)[-1].min()
+        rtmin = data_rt.reshape(100, 50)[:, 0].max()
+        rtmax = data_rt.reshape(100, 50)[:, -1].min()
 
         #-- create the regular grid for griddata
         rp = np.linspace(rpmin, rpmax, nbins)
