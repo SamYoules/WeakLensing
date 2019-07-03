@@ -15,12 +15,17 @@ from astropy.io import fits
 import healpy
 import sys
 
+##- User input (auto and cross kappa maps)
+map1   = sys.argv[1]
+map2   = sys.argv[2]
+mapout = sys.argv[3]
+
 ##- Read maps (kappa and weight)
-khead = fits.open(sys.argv[1])[1].header
-k1 = fits.open(sys.argv[1])[1].data.kappa
-w1 = fits.open(sys.argv[1])[1].data.wkappa
-k2 = fits.open(sys.argv[2])[1].data.kappa
-w2 = fits.open(sys.argv[2])[1].data.wkappa
+khead = fits.open(map1)[1].header
+k1 = fits.open(map1)[1].data.kappa
+w1 = fits.open(map1)[1].data.wkappa
+k2 = fits.open(map2)[1].data.kappa
+w2 = fits.open(map2)[1].data.wkappa
 
 ##- Calculate weighted average
 kap = N.zeros(w1.size)
@@ -35,7 +40,7 @@ for i in range(w1.size):
         wkap[i] = w1[i] + w2[i]
 
 ##- Write map
-out = fitsio.FITS(sys.argv[3], 'rw', clobber=True)
+out = fitsio.FITS(mapout, 'rw', clobber=True)
 head = {}
 head['RPMIN']=khead['RPMIN']
 head['RPMAX']=khead['RPMAX']

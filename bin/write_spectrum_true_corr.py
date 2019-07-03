@@ -7,20 +7,20 @@ import healpy as hp
 import scipy as sp
 import numpy as np
 import pylab as P
+#import kappa_lya
+#from kappa_lya import *
 import sys
 
-def get_correlations(filenumber, esttype, maptype):
+def get_correlations(esttype, maptype, suffix):
     '''Open the estimated and input kappa files and get the auto and cross
        power spectrum'''
 
-    print (filenumber, "of 100")
     ##- Open maps
-    kest = fits.open('maps/{}/{}/kappa{}.fits.gz'.format \
-                                  (esttype, maptype, filenumber))[1].data.kappa
-    wkest = fits.open('maps/{}/{}/kappa{}.fits.gz'.format \
-                                 (esttype, maptype, filenumber))[1].data.wkappa
-    kinput = fits.open('maps/input/kappa_input{}.fits'.format \
-                                                        (filenumber))[1].data.I
+    kest = fits.open('maps/{}/true_corr/kappa_{}_{}.fits.gz'.format \
+                                  (esttype, maptype, suffix))[1].data.kappa
+    wkest = fits.open('maps/{}/true_corr/kappa_{}_{}.fits.gz'.format \
+                                 (esttype, maptype, suffix))[1].data.wkappa
+    kinput = fits.open('maps/input/kappa_input1.fits')[1].data.I
     kest *= (-1)
 
     ##- Get resolution of map
@@ -45,24 +45,13 @@ def get_correlations(filenumber, esttype, maptype):
     #return Cl_auto, Cl_cross, Cl_input
     return Cl_auto, Cl_cross
 
-##- Input (e.g.  midpoint xnoisy)
+##- Input (e.g.  midpoint xnoisy rt70  )
 esttype = sys.argv[1]
 maptype = sys.argv[2]
+suffix  = sys.argv[3]
 
-C_ells = []
-N_files = 100
+Cl_autos, Cl_crosses =get_correlations(esttype, maptype, suffix)
 
-for i in range(N_files):
-    j = str(i+1)
-    C_ells.append(get_correlations(j, esttype, maptype))
-
-Cl_array = np.asarray(C_ells)
-Cl_autos = Cl_array[:,0]
-Cl_crosses = Cl_array[:,1]
-#Cl_inputs = Cl_array[:,2]
-np.savetxt('maps/{}/{}/Cls/Cl_autos.txt'.format(esttype, maptype), Cl_autos)
-np.savetxt('maps/{}/{}/Cls/Cl_crosses.txt'.format(esttype, maptype), Cl_crosses)
-#np.savetxt('maps/input/Cl_inputs.txt', Cl_inputs)
-
-
+np.savetxt('maps/{}/true_corr/Cls/Cl_autos_{}_{}.txt'.format(esttype, maptype, suffix), Cl_autos)
+np.savetxt('maps/{}/true_corr/Cls/Cl_crosses_{}_{}.txt'.format(esttype, maptype, suffix), Cl_crosses)
 

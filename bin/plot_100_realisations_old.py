@@ -82,14 +82,6 @@ def get_vals(cl_crosses_in, cl_inputs):
 
     return ell, cross_mean, cross_stdev, input_mean, chi2
 
-def get_model(kappa_type):
-    cl_true_corr = hp.sphtfunc.anafast(kappa_type, lmax=3*nside-1)
-    y = (cl_true_corr / cl_xi_input)
-    x = np.arange(y.size)
-    z = np.polyfit(x, y, 5)
-    model = np.polyval(z, x)
-    return model, x
-
 
 esttype = 'midpoint'
 
@@ -170,14 +162,19 @@ chi2cut=r'$\chi^2_{\alpha \alpha} = $' + chi22a + ', ' + r'$\chi^2_{q\alpha} = $
 
 chi2noiseless=r'$\chi^2_{\alpha \alpha} = $' + chi23a + ', ' + r'$\chi^2_{q\alpha} = $' + chi23b + ', ' + r'$\chi^2_{comb} = $' + chi23c
 
-x = []
-model = []
-kappa_true = [kxi_noisy, kxxi_noisy, kxi_cut, kxxi_cut, kxi_noiseless, kxxi_noiseless]
-for i in kappa_true:
-    mod, ell_true = get_model(i)
-    model.append(mod)
-    x.append(ell_true)
-    
+##- fit for large-angles (auto, noisy)
+cl_true_corr = hp.sphtfunc.anafast(kxi_noisy, lmax=3*nside-1)
+y = (cl_true_corr / cl_xi_input)
+x = np.arange(y.size)
+z = np.polyfit(x, y, 5)
+model_noisy = np.polyval(z, x)
+
+##- fit for large-angles (cross, noisy)
+clx_true_corr = hp.sphtfunc.anafast(kxxi_noisy, lmax=3*nside-1)
+yx = (clx_true_corr / cl_xi_input)
+xx = np.arange(yx.size)
+zx = np.polyfit(xx, yx, 5)
+modelx_noisy = np.polyval(zx, xx)
 
 ##- Setup figures
 P.rcParams.update({'font.size':18})
@@ -189,8 +186,8 @@ colors = P.cm.Set1(np.linspace(0,1,ncolors))
 ##- Plot bias figure
 P.figure(figsize=(8.2,6))
 P.plot(input_mean[0]*x, color=colors[1], linewidth=2.0, linestyle="-",label='Masked Input')
-P.plot(input_mean[0]*model[0]*x[0], color=colors[2], lw=2, linestyle="-",label='Masked Input x large-angle damping (Auto)')
-P.plot(input_mean[1]*model[1]*x[1], color=colors[3], lw=2, linestyle="-",label='Masked Input x large-angle damping (Cross)')
+P.plot(input_mean[0]*model_noisy*x, color=colors[2], lw=2, linestyle="-",label='Masked Input x large-angle damping (Auto)')
+P.plot(input_mean[1]*modelx_noisy*xx, color=colors[3], lw=2, linestyle="-",label='Masked Input x large-angle damping (Cross)')
 P.errorbar(ell, cross_mean[3]*ell, xerr=None, yerr=cross_stdev[0]*ell, color=colors[2], marker = 'o', fmt='.', capsize=5, elinewidth=2, markeredgewidth=2, markeredgecolor=colors[2], label='High Density Auto x Input')
 P.errorbar(ell + 4, cross_mean[4]*ell, xerr=None, yerr=cross_stdev[1]*ell, color=colors[3], marker = 'o', fmt='.', capsize=5, elinewidth=2, markeredgewidth=2, markeredgecolor=colors[3], label='High Density Cross x Input')
 
@@ -244,8 +241,8 @@ ax3.text(1.02, 0.5, "High Density",
 
 ##- Subplot 1
 ##- Masked Input x Large-angle damping
-ax1.plot(input_mean[0]*model[0]*x[0], color=colors[4], lw=2, linestyle="-",label='Damped Masked Input (Auto)')
-ax1.plot(input_mean[0]*model[1]*x[1], color=colors[3], lw=2, linestyle="-",label='Damped Masked Input (Cross)')
+ax1.plot(input_mean[0]*model_noisy*x, color=colors[4], lw=2, linestyle="-",label='Damped Masked Input (Auto)')
+ax1.plot(input_mean[0]*modelx_noisy*xx, color=colors[3], lw=2, linestyle="-",label='Damped Masked Input (Cross)')
 
 ax1.errorbar(ell, cross_mean[0]*ell, xerr=None, yerr=cross_stdev[0]*ell, color=colors[0], marker = 'o', markeredgecolor=colors[0], fmt='.', capsize=5, elinewidth=2, markeredgewidth=2, label=r'$\langle \kappa_{\alpha \alpha} \kappa_{\rm{input}} \rangle$')
 
@@ -267,12 +264,12 @@ ax1.add_artist(anchored_text)
 ax1.legend(numpoints = 1, bbox_to_anchor=(1.7, 1), loc="upper center", borderaxespad=0., fontsize=14, ncol=1, handletextpad=0.5, handlelength=1, columnspacing=1)
 
 ##- Subplot 2
-ax2.plot(input_mean[0]*model[2]*x[2], color=colors[4], lw=2, linestyle="-",label='Damped Masked Input (Auto)')
-ax2.plot(input_mean[0]*model[3]*x[3], color=colors[3], lw=2, linestyle="-",label='Damped Masked Input (Cross)')
+ax2.plot(input_mean[0]*model_cut*x, color=colors[4], lw=2, linestyle="-",label='Damped Masked Input (Auto)')
+ax2.plot(input_mean[0]*modelx_cut*xx, color=colors[3], lw=2, linestyle="-",label='Damped Masked Input (Cross)')
 
-ax2.errorbar(ell, cross_mean[6]*ell, xerr=None, yerr=cross_stdev[6]*ell, color=colors[0], marker = 'o', markeredgecolor=colors[0], fmt='.', capsize=5, elinewidth=2, markeredgewidth=2, label=r'$\langle \kappa_{\alpha \alpha} \kappa_{\rm{input}} \rangle$ Noiseless')
+ax2.errorbar(ell, cross_mean[6]*ell, xerr=None, yerr=cross_stdev[6]*ell, color=colors[0], marker = 'o', markeredgecolor=colors[0], fmt='.', capsize=5, elinewidth=2, markeredgewidth=2, label=r'$\langle \kappa_{\alpha \alpha} \kappa_{\rm{input}} \rangle$ Cut')
 
-ax2.errorbar(ell + 4, cross_mean[7]*ell, xerr=None, yerr=cross_stdev[7]*ell, color=colors[1], marker = 'o', markeredgecolor=colors[1], fmt='.', capsize=5, elinewidth=2, markeredgewidth=2, label=r'$\langle \kappa_{q \alpha} \kappa_{\rm{input}} \rangle$ Noiseless')
+ax2.errorbar(ell + 4, cross_mean[7]*ell, xerr=None, yerr=cross_stdev[7]*ell, color=colors[1], marker = 'o', markeredgecolor=colors[1], fmt='.', capsize=5, elinewidth=2, markeredgewidth=2, label=r'$\langle \kappa_{q \alpha} \kappa_{\rm{input}} \rangle$ Cut')
 
 ax2.errorbar(ell + 8, cross_mean[8]*ell, xerr=None, yerr=cross_stdev[8]*ell, color=colors[2], marker = 'o', markeredgecolor=colors[2], fmt='.', capsize=5, elinewidth=2, markeredgewidth=2, label=r'$\langle \kappa_{comb} \kappa_{\rm{input}} \rangle$')
 
@@ -286,12 +283,12 @@ anchored_text = AnchoredText(chi2cut, loc=1)
 ax2.add_artist(anchored_text)
 
 ##- Subplot 3
-ax3.plot(input_mean[0]*model[4]*x[4], color=colors[4], lw=2, linestyle="-",label='Damped Masked Input (Auto)')
-ax3.plot(input_mean[0]*model[5]*x[5], color=colors[3], lw=2, linestyle="-",label='Damped Masked Input (Cross)')
+ax3.plot(input_mean[0]*model_noiseless*x, color=colors[4], lw=2, linestyle="-",label='Damped Masked Input (Auto)')
+ax3.plot(input_mean[0]*modelx_noiseless*xx, color=colors[3], lw=2, linestyle="-",label='Damped Masked Input (Cross)')
 
-ax3.errorbar(ell, cross_mean[3]*ell, xerr=None, yerr=cross_stdev[3]*ell, color=colors[0], marker = 'o', markeredgecolor=colors[0], fmt='.', capsize=5, elinewidth=2, markeredgewidth=2, label=r'$\langle \kappa_{\alpha \alpha} \kappa_{\rm{input}} \rangle$ High Density')
+ax3.errorbar(ell, cross_mean[3]*ell, xerr=None, yerr=cross_stdev[3]*ell, color=colors[0], marker = 'o', markeredgecolor=colors[0], fmt='.', capsize=5, elinewidth=2, markeredgewidth=2, label=r'$\langle \kappa_{\alpha \alpha} \kappa_{\rm{input}} \rangle$ Noiseless')
 
-ax3.errorbar(ell + 4, cross_mean[4]*ell, xerr=None, yerr=cross_stdev[4]*ell, color=colors[1], marker = 'o', markeredgecolor=colors[1], fmt='.', capsize=5, elinewidth=2, markeredgewidth=2, label=r'$\langle \kappa_{q \alpha} \kappa_{\rm{input}} \rangle$ High Density')
+ax3.errorbar(ell + 4, cross_mean[4]*ell, xerr=None, yerr=cross_stdev[4]*ell, color=colors[1], marker = 'o', markeredgecolor=colors[1], fmt='.', capsize=5, elinewidth=2, markeredgewidth=2, label=r'$\langle \kappa_{q \alpha} \kappa_{\rm{input}} \rangle$ Noiseless')
 
 ax3.errorbar(ell + 8, cross_mean[5]*ell, xerr=None, yerr=cross_stdev[5]*ell, color=colors[2], marker = 'o', markeredgecolor=colors[2], fmt='.', capsize=5, elinewidth=2, markeredgewidth=2, label=r'$\langle \kappa_{comb} \kappa_{\rm{input}} \rangle$')
 

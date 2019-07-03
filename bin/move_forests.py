@@ -11,18 +11,17 @@ import os
 import fitsio
 from kappa_lya import *
 import argparse
-import configargparse
-
 
 #-- Input arguments
 
-parser = configargparse.ArgParser()
+parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description='Move forests with bend angle (alpha) map.')
 
-parser.add('--indir', required=True, type=str, \
+parser.add_argument('--indir', required=True, type=str, \
            help='folder containing deltas')
-parser.add('--outdir', required=True, type=str, \
+parser.add_argument('--outdir', required=True, type=str, \
            help='folder containing lensed deltas') 
-parser.add('--mapnumber', required=False, type=int, default=1, \
+parser.add_argument('--mapnumber', required=False, type=int, default=1, \
            help='index number of input map')
 args, unknown = parser.parse_known_args()
 

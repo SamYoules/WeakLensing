@@ -66,10 +66,10 @@ class kappa:
         h.close()
         ff.close()
 
-        rpmin = data_rp.reshape(100, 50)[0].max()
-        rpmax = data_rp.reshape(100, 50)[-1].min()
-        rtmin = data_rt.reshape(100, 50)[:, 0].max()
-        rtmax = data_rt.reshape(100, 50)[:, -1].min()
+        rpmin = data_rp.reshape(50, 50)[0].max()
+        rpmax = data_rp.reshape(50, 50)[-1].min()
+        rtmin = data_rt.reshape(50, 50)[:, 0].max()
+        rtmax = data_rt.reshape(50, 50)[:, -1].min()
 
         #-- create the regular grid for griddata
         rp = np.linspace(rpmin, rpmax, nbins)
