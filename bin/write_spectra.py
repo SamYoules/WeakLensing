@@ -21,7 +21,7 @@ def get_correlations(filenumber, esttype, maptype):
                                  (esttype, maptype, filenumber))[1].data.wkappa
     kinput = fits.open('maps/input/kappa_input{}.fits'.format \
                                                         (filenumber))[1].data.I
-    kest *= (-1)
+    #kest *= (-1)
 
     ##- Get resolution of map
     nside=int(hp.npix2nside(kest.size))

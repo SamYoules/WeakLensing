@@ -231,7 +231,7 @@ class kappa:
         xip_model = kappa.xi2d(rt, rp, dx=1, grid=False)
 
         #-- weight of estimator
-        R = 1/(xip_model*rt)
+        R = -1/(xip_model*rt)
 
         ska = sp.sum( (d12 - xi_model)/R*w12 )
         wka = sp.sum( w12/R**2 )
@@ -261,7 +261,7 @@ class kappa:
         xi_model  = kappa.xi2d(rt,      rp,       grid=False)
         xi_lens   = kappa.xi2d(rt_lens, rp_lens,  grid=False)
         xip_model = kappa.xi2d(rt,      rp, dx=1, grid=False)
-        R = 1/(xip_model*rt)
+        R = -1/(xip_model*rt)
 
         ska = sp.sum( (xi_lens - xi_model)/R )
         wka = sp.sum( 1/R**2  )

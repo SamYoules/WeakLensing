@@ -23,7 +23,7 @@ import h5py ## SY 5/6/19
 
 class kappa:
 
-    nside = 256
+    #nside = 256
     nside_data = 32
     rot = healpy.Rotator(coord=['C', 'G'])
     lambda_abs = 1215.67
@@ -76,11 +76,17 @@ class kappa:
         #-- create the regular grid for griddata
         rp = np.linspace(rpmin, rpmax, nbins*2)
         rt = np.linspace(rtmin, rtmax, nbins)
-        xim = sp.interpolate.griddata((data_rt, data_rp), fit, \
-                    (rt[:, None], rp[None, :]), method='cubic')
+
+        #xim = sp.interpolate.griddata((data_rt, data_rp), fit, \
+        #            (rt[:, None], rp[None, :]), method='cubic')
+
+        xim = sp.interpolate.griddata((data_rt, data_rp), fit,
+                    (np.outer(np.ones(rp.size), rt).ravel(),
+                    np.outer(rp, np.ones(rt.size)).ravel()), method='cubic')
 
         #-- create interpolator object
-        xi2d = sp.interpolate.RectBivariateSpline(rt, rp, xim)
+        xi2d = sp.interpolate.RectBivariateSpline(rt, rp, \
+                   xim.reshape((100, 50)).T )
 
         kappa.xi2d = xi2d
         return xi2d
@@ -131,9 +137,6 @@ class kappa:
     def fill_neighs():
         data = kappa.data
         objs = kappa.objs
-        lambda_abs = 1215.67  #SY 13/2/19
-        z_cut_min = 0.        #SY 13/2/19
-        z_cut_max = 10.       #SY 13/2/19
         print('\n Filling neighbors')
         for ipix in data.keys():
             for d in data[ipix]:
@@ -145,10 +148,7 @@ class kappa:
                 ang = d^neighs
                 w = ang<kappa.angmax
                 neighs = sp.array(neighs)[w]
-                d.neighs = sp.array([q for q in neighs if (10**(d.ll[-1]- \
-                         sp.log10(lambda_abs))-1 + q.zqso)/2. >= z_cut_min \
-                         and (10**(d.ll[-1]- sp.log10(lambda_abs))-1 + \
-                         q.zqso)/2. < z_cut_max])
+                d.qneighs = [q for q in neighs]
 
         
     @staticmethod
@@ -165,34 +165,13 @@ class kappa:
                                  round(kappa.counter.value*100./kappa.ndata,2)))
                 with kappa.lock:
                     kappa.counter.value += 1
-                for q in d.neighs:
-                    #--  compute the cartesian mid points and convert back 
-                    #--  to ra, dec
-                    #mid_xcart = 0.5*(d.xcart+q.xcart)
-                    #mid_ycart = 0.5*(d.ycart+q.ycart)
-                    #mid_zcart = 0.5*(d.zcart+q.zcart)
-                    #mid_ra, mid_dec = get_radec(\
-                    #    np.array([mid_xcart, mid_ycart, mid_zcart]))
-
-                    #-- apply rotation into Galactic coordinates
-                    #th, phi = kappa.rot(sp.pi/2-mid_dec, mid_ra)
-                    #-- keeping without rotation
-                    #th, phi = sp.pi/2-mid_dec, mid_ra
-
-                    #-- check if pair of skewers belong to same spectro
-                    #same_half_plate = (d.plate == q.plate) and\
-                    #        ( (d.fid<=500 and q.fid<=500) or \
-                    #        (d.fid>500 and q.fid>500) )
+                for q in d.qneighs:
 
                     #-- angle between skewers
                     ang = d^q
                     if kappa.true_corr:
                         ang_delensed = d.delensed_angle(q)
  
-                    #-- getting pixel in between 
-                    #mid_pix = healpy.ang2pix(kappa.nside, \
-                    #              th, phi) 
-
                     if kappa.true_corr:
                         sk, wk = kappa.fast_kappa_true(\
                                 d.z, d.r_comov, \
@@ -234,7 +213,7 @@ class kappa:
         xip_model = kappa.xi2d(rt, rp, dx=1, grid=False)
 
         #-- weight of estimator
-        R = 1/(xip_model*rt)
+        R = -1/(xip_model*rt)
 
         ska = sp.sum( (de - xi_model)/R*we )
         wka = sp.sum( we/R**2 ) 
@@ -261,20 +240,12 @@ class kappa:
         xi_model  = kappa.xi2d(rt,      rp,       grid=False)
         xi_lens   = kappa.xi2d(rt_lens, rp_lens,  grid=False)
         xip_model = kappa.xi2d(rt,      rp, dx=1, grid=False)
-        R = 1/(xip_model*rt)
+        R = -1/(xip_model*rt)
 
         ska = sp.sum( (xi_lens - xi_model)/R )
         wka = sp.sum( 1/R**2  )
 
         return ska, wka
-
-
-def get_radec(pos):
-    ra = np.arctan(pos[1]/pos[0]) +np.pi + np.pi*(pos[0]>0)
-    ra -= 2*np.pi*(ra>2*np.pi)
-    dec = np.arcsin(pos[2]/np.sqrt(pos[0]**2+pos[1]**2+pos[2]**2))
-    return ra, dec
-
 
 
 def compute_kappa(p):
@@ -301,24 +272,22 @@ if __name__=='__main__':
                help='number of spectra to process')
     parser.add_argument('--drq', type=str, default=None, \
                required=True, help='Catalog of objects in DRQ format')
-    parser.add_argument('--nside', type=int, default=256, required=False, \
-               help='Healpix nside')
-    parser.add_argument('--z-min-obj', type=float, default=None, \
+    parser.add_argument('--z_min_obj', type=float, default=None, \
                required=False, help='Min redshift for object field')
-    parser.add_argument('--z-max-obj', type=float, default=None, \
+    parser.add_argument('--z_max_obj', type=float, default=None, \
                required=False, help='Max redshift for object field')
-    parser.add_argument('--z-cut-min', type=float, default=0., required=False,
+    parser.add_argument('--z_cut_min', type=float, default=0., required=False,
         help='Use only pairs of forest x object with the mean of the last absorber \
-        redshift and the object redshift larger than z-cut-min') #SY 13/2/19
-    parser.add_argument('--z-cut-max', type=float, default=10., required=False,
+        redshift and the object redshift larger than z_cut_min') #SY 13/2/19
+    parser.add_argument('--z_cut_max', type=float, default=10., required=False,
         help='Use only pairs of forest x object with the mean of the last absorber \
-        redshift and the object redshift smaller than z-cut-max') #SY 13/2/19
-    parser.add_argument('--z-evol-obj', type=float, default=1., \
+        redshift and the object redshift smaller than z_cut_max') #SY 13/2/19
+    parser.add_argument('--z_evol_obj', type=float, default=1., \
                required=False, help='Exponent of the redshift evolution of \
                the object field')
-    parser.add_argument('--z-ref', type=float, default=2.25, required=False, \
+    parser.add_argument('--z_ref', type=float, default=2.25, required=False, \
                help='Reference redshift')
-    parser.add_argument('--fid-Om', type=float, default=0.315, \
+    parser.add_argument('--fid_Om', type=float, default=0.315, \
                required=False, help='Omega_matter(z=0) of fiducial LambdaCDM \
                cosmology')
     parser.add_argument('--rt_min', required=False, type=float, default=3., \
@@ -346,7 +315,6 @@ if __name__=='__main__':
     kappa.rp_min = args.rp_min
     kappa.rt_max = args.rt_max
     kappa.rp_max = args.rp_max
-    kappa.nside  = args.nside        #SY 26/2/19
     kappa.z_cut_max = args.z_cut_max #SY 13/2/19
     kappa.z_cut_min = args.z_cut_min #SY 13/2/19
     kappa.load_model(args.xi, args.fit) # SY 5/6/19
@@ -383,7 +351,6 @@ if __name__=='__main__':
     head['RTMAX']=kappa.rt_max
     head['NT']=kappa.nt
     head['NP']=kappa.np
-    head['NSIDE']=kappa.nside
     out.write([id1, id2, skappa, wkappa],
               names=['THIDQ', 'THID', 'SKAPPA', 'WKAPPA'],
               header=head)

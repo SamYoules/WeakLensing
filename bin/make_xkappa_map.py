@@ -70,7 +70,7 @@ if __name__=='__main__':
                help='output fits file with kappa values') 
     parser.add_argument('--rt_min', required=False, type=float, default=3., \
                help='minimum transverse separation')
-    parser.add_argument('--rp_min', required=False, type=float, default=3., \
+    parser.add_argument('--rp_min', required=True, type=float, default=-10., \
                help='minimum radial separation')
     parser.add_argument('--rt_max', required=True, type=float, default=40., \
                help='maximum transverse separation')
@@ -78,7 +78,7 @@ if __name__=='__main__':
                help='maximum radial separation')
     parser.add_argument('--nside', required=False, type=int, default=256, \
                help='resolution of map')
-    parser.add_argument('--zcat', required=False, type=str, \
+    parser.add_argument('--zcat', required=True, type=str, \
                help='catalogue file')
     args, unknown = parser.parse_known_args()
 
