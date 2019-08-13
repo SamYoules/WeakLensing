@@ -241,9 +241,9 @@ class kappa:
     @staticmethod
     def fast_kappa_true(z1, r1, z2, r2, ang, ang_lens):
 
-        rp      = abs(r1-r2[:,None])*sp.cos(ang/2)
+        rp      = (r1-r2[:,None])*sp.cos(ang/2)
         rt      = (r1+r2[:,None])*sp.sin(ang/2)
-        rp_lens = abs(r1-r2[:,None])*sp.cos(ang_lens/2)
+        rp_lens = (r1-r2[:,None])*sp.cos(ang_lens/2)
         rt_lens = (r1+r2[:,None])*sp.sin(ang_lens/2)
 
         #z = (z1+z2[:,None])/2

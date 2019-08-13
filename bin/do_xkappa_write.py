@@ -223,9 +223,9 @@ class kappa:
     @staticmethod
     def fast_kappa_true(z1, r1, zq, rq, ang, ang_lens):
         
-        rp      = abs(r1[:,None]-rq)*sp.cos(ang/2)
+        rp      = (r1[:,None]-rq)*sp.cos(ang/2)
         rt      = (r1[:,None]+rq)*sp.sin(ang/2)
-        rp_lens = abs(r1[:,None]-rq)*sp.cos(ang_lens/2)
+        rp_lens = (r1[:,None]-rq)*sp.cos(ang_lens/2)
         rt_lens = (r1[:,None]+rq)*sp.sin(ang_lens/2)
         
         w = (rp>=kappa.rp_min) & (rp<=kappa.rp_max) & \
