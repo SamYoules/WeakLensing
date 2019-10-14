@@ -27,13 +27,14 @@ for i, filename in enumerate(allfiles):
     res_sumsq += (t['kappa_out']-kin)**2
 
 #-- Get mean and RMSE of residual
-mean_resid = res_sum / nreal
-rmse = np.sqrt(res_sumsq / nreal)
+res_mean = res_sum / nreal
+res_var = (res_sumsq / nreal) - res_mean**2
+rmse = np.sqrt(res_var)
 
 #-- plot the mean residuals with the error bars
 plt.figure()
 plt.title('rt = {}, rp = {}, nreal = {}, variance = {}'.format(rt, rp, mcreal, var))
-plt.errorbar(kin, mean_resid, yerr=rmse, fmt='o', label='Mean residual')
+plt.errorbar(kin, res_mean, yerr=rmse, fmt='o', label='Mean residual')
 plt.plot((-0.14,0.14),(0,0), 'g--', alpha=0.5)
 plt.legend()
 plt.xlabel('Kappa input')
