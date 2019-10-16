@@ -18,7 +18,7 @@ kin    = np.array([-0.14, -0.12, -0.1, -0.08, -0.06, -0.04, -0.02, 0.,
 res_sum   = np.zeros(kin.size)
 res_sumsq = np.zeros(kin.size)
 
-indir = 'monte_carlo_1'
+indir = 'monte_carlo_rt30_rp10'
 
 allfiles = glob.glob(indir+'/*.fits') 
 for i, filename in enumerate(allfiles):

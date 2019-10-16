@@ -1,14 +1,16 @@
 #!/usr/bin/env python
 
+#-- plot 2d residuals (kappa_in - kappa_out) as function of rt, rp
+
 import numpy as np
 from numpy import linalg
 import scipy as sp
 from scipy import interpolate
-from picca.data import forest, delta
+#from picca.data import forest, delta
 import fitsio
 import h5py
 import argparse
-from astropy.table import Table
+import pylab as plt
 
 def load_model(file_xi, file_fit, nbins=50) :
 
@@ -43,15 +45,15 @@ def load_model(file_xi, file_fit, nbins=50) :
     xi2d = sp.interpolate.RectBivariateSpline(rt, rp, \
                xim.reshape((50, 50)).T )
 
-    return xi2d
+    return xi2d, rt, rp
 
 if __name__=='__main__':
 
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         description='Improve fit of xcf for lya-lya.')
 
-    parser.add_argument('--rt', required=True, type=int, \
-               help='r transverse separation between qso and delta')
+    parser.add_argument('--kappa_in', required=True, type=float, \
+               help='kappa value to model')
     parser.add_argument('--nreal', required=True, type=int, default=1000000, \
                help='number of realisations')
     parser.add_argument('--var', required=True, type=float, default=0.005, \
@@ -60,68 +62,49 @@ if __name__=='__main__':
                help='text file containing model')
     parser.add_argument('--fit', required=True, \
                help='text file containing corrrelation function')
-    parser.add_argument('--num', required=True, type=int, \
-               help='number')
 
     args, unknown = parser.parse_known_args()
 
-    rt = args.rt
+    kappa_in = args.kappa_in
     nrealisations = args.nreal
     var1 = args.var
     var2 = args.var
     xi_file = args.xi
     fit_file = args.fit
-    num = args.num # sy
 
     # Construct two columns of gaussian random variables
     g = np.random.randn(2, nrealisations)
 
     # Get xi_model interpolator object
-    xi2d = load_model(xi_file, fit_file)
+    xi2d, rt, rp = load_model(xi_file, fit_file)
 
-    # Set range of kappa and rp to test
-    kappa_in = [-0.14, -0.12, -0.1, -0.08, -0.06, -0.04, -0.02, 0.,
-                 0.02, 0.04, 0.06, 0.08, 0.1, 0.12, 0.14]
+    residuals = np.zeros(shape=(50,50))
+    for i, r_t in enumerate(rt):
+        for j, r_p in enumerate(rp):
+            # Construct Covariance matrix
+            xi_un = xi2d(r_t, r_p, grid=False)
+            C = np.array([ [var1, xi_un  ],
+                           [xi_un,   var2] ])
 
-    # kappa range for the blob
-    #kappa_in = [0.0001, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.00001]
-    r_p = [10]
-    #r_p = [10,20,30,40,50,60,70]
+            # Cholesky decomposition, see 2.1 in 1108.5606
+            L = np.linalg.cholesky(C)
 
-    # Open template file
-    t = Table.read('monte_carlo/monte_carlo_template.fits')
-    for rp in r_p:
-        # Construct Covariance matrix
-        xi_un = xi2d(rt, rp, grid=False)
-        C = np.array([ [var1, xi_un  ],
-                       [xi_un,   var2] ])
-
-        # Cholesky decomposition, see 2.1 in 1108.5606
-        L = np.linalg.cholesky(C)
-
-        # Apply transformation to correlate variables
-        delta = L.dot(g)
-
-        # Check covariance matrix of delta is similar to C + noise
-        print(np.cov(delta)) 
-
-        for k in kappa_in:
+            # Apply transformation to correlate variables
+            delta = L.dot(g)
 
             # Apply lensing (approximation ignoring shear)
-            rt_lens = rt * (1 - k)
+            rt_lens = r_t * (1 - kappa_in)
 
             # Estimate kappa
-            xi_model = xi2d(rt_lens, rp)
-            R = 1 / rt_lens / xi2d(rt_lens, rp, dx=1)
+            xi_model = xi2d(rt_lens, r_p)
+            R = 1 / rt_lens / xi2d(rt_lens, r_p, dx=1)
             kappa_out = np.mean(  (delta[0]*delta[1] - xi_model)*R  )
+            residuals[i,j] = kappa_in - kappa_out
 
-            # Write output
-            t.add_row([k, rp, rt, var1, var2, nrealisations, kappa_out])
-            
-    t.remove_row(0)
-    t.write('monte_carlo_1/monte_carlo_results_rt{}_rp10_{}.fits'.format(rt, num), format='fits', overwrite=True)
-    #t.write('monte_carlo/monte_carlo_results_{}.fits'.format(rt), format='fits', overwrite=True)
-
+plt.figure()
+plt.pcolormesh(residuals)
+plt.colorbar()
+plt.savefig(f'kappa_{kappa_in}.png')
 
 
 
