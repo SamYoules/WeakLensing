@@ -1,16 +1,16 @@
 #!/usr/bin/env python
 
-#-- plot 2d residuals (kappa_in - kappa_out) as function of rt, rp
+#-- plot 2d residuals (kappa_in - kappa_out)/std as function of rt, rp
 
 import numpy as np
 from numpy import linalg
 import scipy as sp
 from scipy import interpolate
-#from picca.data import forest, delta
 import fitsio
 import h5py
 import argparse
 import pylab as plt
+from astropy.table import Table
 
 def load_model(file_xi, file_fit, nbins=50) :
 
@@ -55,7 +55,9 @@ if __name__=='__main__':
     parser.add_argument('--kappa_in', required=True, type=float, \
                help='kappa value to model')
     parser.add_argument('--nreal', required=True, type=int, default=1000000, \
-               help='number of realisations')
+               help='number of delta pair realisations')
+    parser.add_argument('--mcreal', required=True, type=int, default=100, \
+               help='number of mc realisations')
     parser.add_argument('--var', required=True, type=float, default=0.005, \
                help='variance of deltas (approx 0.04 at z=2 to 0.15 at z=3)')
     parser.add_argument('--xi', required=True, \
@@ -67,13 +69,11 @@ if __name__=='__main__':
 
     kappa_in = args.kappa_in
     nrealisations = args.nreal
+    mc_realisations = args.mcreal
     var1 = args.var
     var2 = args.var
     xi_file = args.xi
     fit_file = args.fit
-
-    # Construct two columns of gaussian random variables
-    g = np.random.randn(2, nrealisations)
 
     # Get xi_model interpolator object
     xi2d, rt, rp = load_model(xi_file, fit_file)
@@ -81,30 +81,49 @@ if __name__=='__main__':
     residuals = np.zeros(shape=(50,50))
     for i, r_t in enumerate(rt):
         for j, r_p in enumerate(rp):
-            # Construct Covariance matrix
-            xi_un = xi2d(r_t, r_p, grid=False)
-            C = np.array([ [var1, xi_un  ],
-                           [xi_un,   var2] ])
+            kappas_out = []
+            for r in range(mc_realisations):
 
-            # Cholesky decomposition, see 2.1 in 1108.5606
-            L = np.linalg.cholesky(C)
+                # Construct two columns of gaussian random variables
+                g = np.random.randn(2, nrealisations)
 
-            # Apply transformation to correlate variables
-            delta = L.dot(g)
+                # Construct Covariance matrix
+                xi_un = xi2d(r_t, r_p, grid=False)
+                C = np.array([ [var1, xi_un  ],
+                               [xi_un,   var2] ])
 
-            # Apply lensing (approximation ignoring shear)
-            rt_lens = r_t * (1 - kappa_in)
+                # Cholesky decomposition, see 2.1 in 1108.5606
+                L = np.linalg.cholesky(C)
 
-            # Estimate kappa
-            xi_model = xi2d(rt_lens, r_p)
-            R = 1 / rt_lens / xi2d(rt_lens, r_p, dx=1)
-            kappa_out = np.mean(  (delta[0]*delta[1] - xi_model)*R  )
-            residuals[i,j] = kappa_in - kappa_out
+                # Apply transformation to correlate variables
+                delta = L.dot(g)
 
-plt.figure()
-plt.pcolormesh(residuals)
-plt.colorbar()
-plt.savefig(f'kappa_{kappa_in}.png')
+                # Apply lensing (approximation ignoring shear)
+                rt_lens = r_t * (1 - kappa_in)
+
+                # Estimate kappa
+                xi_model = xi2d(rt_lens, r_p)
+                R = 1 / rt_lens / xi2d(rt_lens, r_p, dx=1)
+                kappa_out = np.mean(  (delta[0]*delta[1] - xi_model)*R  )
+                kappas_out.append(kappa_out)
+
+            kappas_out = np.array(kappas_out)
+            kappa_mean = np.mean(kappas_out)
+            kappa_std = np.std(kappas_out)
+            residuals[i,j] = (kappa_mean - kappa_in)/kappa_std
+
+    # Save mean kappa and error to file
+    t = Table([kappa_mean, kappa_std], names=('MEAN', 'STD'))
+    t.write(f'monte_carlo/mc_kappa_{kappa_in}.fits', format='fits', overwrite=True)
+
+    # Plot 2D figure of residuals
+    plt.figure()
+    plt.pcolormesh(residuals, vmin=-2, vmax=2)
+    plt.xlabel('rt')
+    plt.ylabel('rp')
+    plt.title(f'Auto kappa residuals, kappa = {kappa_in}')
+    plt.colorbar()
+    plt.savefig(f'kappa_{kappa_in}.png')
 
 
 
